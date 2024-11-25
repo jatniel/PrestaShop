@@ -231,6 +231,3 @@ docker-compose.override.yml
 
 # config vscode
 .hintrc
-
-# JetBrains IDE .idea
-.idea/
