@@ -26,6 +26,7 @@
 
 namespace PrestaShop\PrestaShop\Core\Form\IdentifiableObject\DataHandler;
 
+use Cookie;
 use PrestaShop\PrestaShop\Core\CommandBus\CommandBusInterface;
 use PrestaShop\PrestaShop\Core\Context\EmployeeContext;
 use PrestaShop\PrestaShop\Core\Crypto\Hashing;
@@ -98,6 +99,10 @@ final class EmployeeFormDataHandler implements FormDataHandlerInterface
      */
     private $maxLength;
 
+    private bool $boAllowEmployeeFormLang;
+
+    private Cookie $legacyContextCookie;
+
     public function __construct(
         CommandBusInterface $bus,
         array $defaultShopAssociation,
@@ -109,6 +114,8 @@ final class EmployeeFormDataHandler implements FormDataHandlerInterface
         int $minLength,
         int $maxLength,
         int $minScore,
+        bool $boAllowEmployeeFormLang,
+        Cookie $legacyContextCookie,
         private readonly EmployeeContext $employeeContext,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly EmployeeRepository $employeeRepository,
@@ -125,6 +132,8 @@ final class EmployeeFormDataHandler implements FormDataHandlerInterface
         $this->minLength = $minLength;
         $this->maxLength = $maxLength;
         $this->minScore = $minScore;
+        $this->boAllowEmployeeFormLang = $boAllowEmployeeFormLang;
+        $this->legacyContextCookie = $legacyContextCookie;
     }
 
     /**
@@ -219,23 +228,12 @@ final class EmployeeFormDataHandler implements FormDataHandlerInterface
             }
         }
 
-        /**
-         * IMPORTANT : Apply all validations before file upload
-         *
-         * During avatar upload, EmployeeController::editAction takes image path
-         * from `$_FILES["employee"]["tmp_name"]["avatarUrl"]`
-         * But AbstractImageUploader::createTemporaryImage($image) executes
-         * `move_uploaded_file($image->getPathname(), $temporaryImageName))`
-         * that removes the image but keep $_FILES["employee"]["tmp_name"]["avatarUrl"] value.
-         *
-         * During data validation (`setXXX($value)` apply validation),
-         * any error would break the workflow and call `render(...)`
-         * (cf. EmployeeController::editAction).
-         * But `DispatcherCore::getInstance(...)` runs
-         * `$request = SymfonyRequest::createFromGlobals()` that take `$_FILES` global variable.
-         * Then during Request object creation,
-         * `$_FILES["employee"]["tmp_name"]["avatarUrl"]` is detected as invalid.
-         */
+        // If Config, Save in cookie the language for Employee
+        if ($this->boAllowEmployeeFormLang) {
+            $this->legacyContextCookie->employee_form_lang = $command->getLanguageId();
+            $this->legacyContextCookie->write();
+        }
+
         /** @var UploadedFile $uploadedAvatar */
         $uploadedAvatar = $data['avatarUrl'];
         if ($uploadedAvatar instanceof UploadedFile) {

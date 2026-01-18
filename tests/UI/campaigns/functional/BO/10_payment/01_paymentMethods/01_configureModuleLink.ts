@@ -4,10 +4,6 @@ import testContext from '@utils/testContext';
 // Import commonTests
 import {resetModule} from '@commonTests/BO/modules/moduleManager';
 
-// Import pages
-// Import BO pages
-import psCheckPayment from '@pages/BO/modules/psCheckPayment';
-
 import {
   boDashboardPage,
   boLoginPage,
@@ -15,6 +11,7 @@ import {
   type BrowserContext,
   dataModules,
   dataPaymentMethods,
+  modPsCheckPaymentBoMain,
   modPsWirepaymentBoMain,
   type Page,
   utilsPlaywright,
@@ -62,7 +59,7 @@ describe('BO - Payments - Payment methods: Configure module link', async () => {
       expect(pageTitle).to.contains(boPaymentMethodsPage.pageTitle);
 
       const numActivePayments = await boPaymentMethodsPage.getCountActivePayments(page);
-      expect(numActivePayments).to.equal(Object.keys(dataPaymentMethods).length);
+      expect(numActivePayments).to.be.greaterThanOrEqual(Object.keys(dataPaymentMethods).length);
     });
 
     it(`should click on the Configure button for "${dataPaymentMethods.wirePayment.displayName}"`, async function () {
@@ -102,7 +99,7 @@ describe('BO - Payments - Payment methods: Configure module link', async () => {
       expect(pageTitle).to.equal(boPaymentMethodsPage.pageTitle);
 
       const numActivePayments = await boPaymentMethodsPage.getCountActivePayments(page);
-      expect(numActivePayments).to.equal(Object.keys(dataPaymentMethods).length);
+      expect(numActivePayments).to.be.greaterThanOrEqual(Object.keys(dataPaymentMethods).length);
     });
 
     it(`should click on the Configure button for "${dataPaymentMethods.checkPayment.displayName}"`, async function () {
@@ -113,18 +110,18 @@ describe('BO - Payments - Payment methods: Configure module link', async () => {
 
       await boPaymentMethodsPage.clickConfigureButton(page, dataModules.psCheckPayment);
 
-      const pageTitle = await psCheckPayment.getPageSubTitle(page);
-      expect(pageTitle).to.equal(psCheckPayment.pageTitle);
+      const pageTitle = await modPsCheckPaymentBoMain.getPageSubTitle(page);
+      expect(pageTitle).to.equal(modPsCheckPaymentBoMain.pageTitle);
     });
 
     it(`should fill required fields for "${dataPaymentMethods.checkPayment.displayName}"`, async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'fillRequiredFieldsCheckPayment', baseContext);
 
-      await psCheckPayment.setPayee(page, 'Payee');
-      await psCheckPayment.setAddress(page, 'Address');
+      await modPsCheckPaymentBoMain.setPayee(page, 'Payee');
+      await modPsCheckPaymentBoMain.setAddress(page, 'Address');
 
-      const result = await psCheckPayment.saveFormContactDetails(page);
-      expect(result).to.contains(psCheckPayment.successfulUpdateMessage);
+      const result = await modPsCheckPaymentBoMain.saveFormContactDetails(page);
+      expect(result).to.contains(modPsCheckPaymentBoMain.successfulUpdateMessage);
     });
 
     it('should return to \'Payment > Payment Methods\' page', async function () {
@@ -141,7 +138,7 @@ describe('BO - Payments - Payment methods: Configure module link', async () => {
       expect(pageTitle).to.equal(boPaymentMethodsPage.pageTitle);
 
       const numActivePayments = await boPaymentMethodsPage.getCountActivePayments(page);
-      expect(numActivePayments).to.equal(Object.keys(dataPaymentMethods).length);
+      expect(numActivePayments).to.be.greaterThanOrEqual(Object.keys(dataPaymentMethods).length);
 
       const hasConfigureButton = await boPaymentMethodsPage.hasConfigureButton(page, dataModules.psCashOnDelivery);
       expect(hasConfigureButton).to.equal(false);

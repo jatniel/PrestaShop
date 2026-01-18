@@ -8,7 +8,7 @@ services:
       # Symfony will throw an error when an argument is no more used in all services definitions so we can safely remove them.
       # Before adding your own, please check it does not already exist in the list.
       # There could be some duplicates.
-      $locales: "@=service('prestashop.adapter.legacy.context').getLanguages()"
+      $locales: "@=service('prestashop.adapter.legacy.context').getLanguages(false)"
       $isMultiShopEnabled: '@=service("prestashop.adapter.multistore_feature").isUsed()'
       $isShopFeatureEnabled: '@=service("prestashop.adapter.multistore_feature").isUsed()'
       $isMultistoreEnabled: '@=service("prestashop.adapter.multistore_feature").isActive()'
@@ -87,6 +87,7 @@ services:
 
   PrestaShopBundle\Form\Admin\Sell\Order\Invoices\GenerateByStatusType:
     arguments:
+      $translator: '@translator'
       $orderStateChoiceProvider: '@prestashop.core.form.choice_provider.order_state_by_id'
       $orderCountsByState: '@=service("prestashop.core.api.order_invoice.repository").countByOrderState(service("prestashop.adapter.shop.context").getContextListShopID())'
 
@@ -227,7 +228,7 @@ services:
 
   PrestaShopBundle\Form\Admin\Type\ShopChoiceTreeType:
     arguments:
-      $stringArrayToIntegerArrayDataTransformer: '@PrestaShopBundle\Form\DataTransformer\DefaultLanguageToFilledArrayDataTransformer'
+      $stringArrayToIntegerArrayDataTransformer: '@PrestaShopBundle\Form\DataTransformer\StringArrayToIntegerArrayDataTransformer'
       $shopTreeChoiceProvider: '@PrestaShop\PrestaShop\Adapter\Form\ChoiceProvider\ShopTreeChoiceProvider'
 
   PrestaShopBundle\Form\Admin\Type\ShopSelectorType:
@@ -362,7 +363,7 @@ services:
   PrestaShopBundle\Form\Admin\Sell\Catalog\AttributeType:
     public: true
     arguments:
-      $attributeGroupRepository: '@PrestaShop\PrestaShop\Adapter\AttributeGroup\Repository\AttributeGroupRepository'
+      $attributeGroupChoiceProvider: '@PrestaShop\PrestaShop\Core\Form\ChoiceProvider\AttributeGroupChoiceProvider'
       $multistoreFeature: '@prestashop.adapter.multistore_feature'
     tags:
       - { name: form.type }
@@ -547,6 +548,7 @@ services:
   PrestaShopBundle\Form\Admin\Configure\ShopParameters\OrderStates\OrderStateType:
     arguments:
       $themeCatalog: "@prestashop.core.mail_template.theme_catalog"
+      $legacyTemplateLister: '@prestashop.core.email.legacy_template_lister'
 
   PrestaShopBundle\Form\Admin\Improve\International\Locations\ZoneType:
   PrestaShopBundle\Form\Admin\Improve\International\Locations\CountryType:
@@ -575,6 +577,10 @@ services:
     arguments:
       $countriesChoiceProvider: '@prestashop.core.form.choice_provider.configurable_country_by_id'
       $zonesChoiceProvider: '@prestashop.core.form.choice_provider.zone_by_id'
+
+  PrestaShopBundle\Form\Admin\Improve\International\Locations\ChangeStatesZoneType:
+    arguments:
+      $zoneChoiceProvider: '@prestashop.core.form.choice_provider.zone_by_id'
 
   PrestaShopBundle\Form\Admin\Sell\Product\EventListener\SpecificPriceCombinationListener:
     arguments:

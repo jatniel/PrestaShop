@@ -1,15 +1,12 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import FO pages
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-
 import {expect} from 'chai';
+
 import {
   type BrowserContext,
   dataProducts,
   foClassicCartPage,
   foClassicHomePage,
+  foClassicModalBlockCartPage,
   foClassicProductPage,
   foClassicSearchResultsPage,
   type Page,
@@ -18,7 +15,7 @@ import {
 
 const baseContext: string = 'functional_FO_classic_cart_cart_displayModalProductCustomization';
 
-describe('FO - cart : Display modal of product customization', async () => {
+describe('FO - Cart : Display modal of product customization', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   const customText: string = 'Hello world!';
@@ -67,17 +64,17 @@ describe('FO - cart : Display modal of product customization', async () => {
 
     await foClassicProductPage.clickOnAddToCartButton(page);
 
-    const isBlockCartModal = await blockCartModal.isBlockCartModalVisible(page);
+    const isBlockCartModal = await foClassicModalBlockCartPage.isBlockCartModalVisible(page);
     expect(isBlockCartModal).to.equal(true);
 
-    const successMessage = await blockCartModal.getBlockCartModalTitle(page);
+    const successMessage = await foClassicModalBlockCartPage.getBlockCartModalTitle(page);
     expect(successMessage).to.contains(foClassicHomePage.successAddToCartMessage);
   });
 
   it('should click on continue shopping button', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'continueShopping', baseContext);
 
-    const isModalNotVisible = await blockCartModal.continueShopping(page);
+    const isModalNotVisible = await foClassicModalBlockCartPage.continueShopping(page);
     expect(isModalNotVisible).to.equal(true);
   });
 

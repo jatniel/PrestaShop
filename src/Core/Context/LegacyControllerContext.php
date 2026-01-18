@@ -33,6 +33,7 @@ use Media;
 use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Traversable;
+use Twig\Environment;
 
 /**
  * This class ensures compatibility with the context controller in pages migrated to Symfony.
@@ -107,6 +108,8 @@ class LegacyControllerContext
 
     protected array $languages = [];
 
+    public bool $multishop_context_group = true;
+
     /**
      * @param ContainerInterface $container Dependency container
      * @param string $controller_name Current controller name without suffix
@@ -131,13 +134,19 @@ class LegacyControllerContext
         public readonly string $table,
         protected readonly Request $request,
         protected readonly int $employeeLanguageId,
-        protected readonly string $baseUri,
+        protected readonly string $physicalUri,
         protected readonly string $adminFolderName,
         protected readonly bool $isLanguageRTL,
         protected readonly string $psVersion,
+        protected readonly Environment $twig,
     ) {
         $this->php_self = $this->controller_name;
         $this->ajax = (bool) $this->request->get('ajax');
+    }
+
+    public function getTwig(): Environment
+    {
+        return $this->twig;
     }
 
     public function addCSS(array|string $css_uri, string $css_media_type = 'all', ?int $offset = null, bool $check_path = true): void
@@ -259,8 +268,8 @@ class LegacyControllerContext
      */
     public function loadLegacyMedia(): void
     {
-        $jsDir = rtrim($this->baseUri, '/') . '/js';
-        $adminDir = rtrim($this->baseUri, '/') . '/' . $this->adminFolderName;
+        $jsDir = rtrim($this->physicalUri, '/') . '/js';
+        $adminDir = rtrim($this->physicalUri, '/') . '/' . $this->adminFolderName;
         if ($this->isLanguageRTL) {
             $this->addCSS($adminDir . '/themes/default/public/rtl.css?v=' . $this->psVersion, 'all', 0);
         }

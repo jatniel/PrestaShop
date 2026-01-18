@@ -1,17 +1,11 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
+import {faker, fakerFR} from '@faker-js/faker';
 
 // Import commonTests
 import {createProductTest, deleteProductTest} from '@commonTests/BO/catalog/product';
 import {resetModule} from '@commonTests/BO/modules/moduleManager';
 
-// Import pages
-// Import FO pages
-import {createAccountPage as foCreateAccountPage} from '@pages/FO/classic/myAccount/add';
-import {accountIdentityPage} from '@pages/FO/classic/myAccount/identity';
-
-import {expect} from 'chai';
-import {faker, fakerFR} from '@faker-js/faker';
 import {
   boDashboardPage,
   boDesignPositionsPage,
@@ -25,9 +19,11 @@ import {
   FakerCustomer,
   FakerProduct,
   foClassicContactUsPage,
+  foClassicCreateAccountPage,
   foClassicHomePage,
   foClassicLoginPage,
   foClassicMyAccountPage,
+  foClassicMyInformationsPage,
   foClassicProductPage,
   foClassicSearchResultsPage,
   modPsGdprBoMain,
@@ -147,17 +143,17 @@ describe('GDPR : Consent checkbox customization', async () => {
 
       await foClassicLoginPage.goToCreateAccountPage(page);
 
-      const pageHeaderTitle = await foCreateAccountPage.getHeaderTitle(page);
-      expect(pageHeaderTitle).to.equal(foCreateAccountPage.formTitle);
+      const pageHeaderTitle = await foClassicCreateAccountPage.getHeaderTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicCreateAccountPage.formTitle);
 
-      const gdprLabel = await foCreateAccountPage.getGDPRLabel(page);
+      const gdprLabel = await foClassicCreateAccountPage.getGDPRLabel(page);
       expect(gdprLabel).to.contains(messageAccountCreation);
     });
 
     it('should create new account', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createNewAccount', baseContext);
 
-      await foCreateAccountPage.createAccount(page, customerData);
+      await foClassicCreateAccountPage.createAccount(page, customerData);
 
       const isCustomerConnected = await foClassicHomePage.isCustomerConnected(page);
       expect(isCustomerConnected).to.eq(true);
@@ -166,7 +162,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should edit the consent message for the Customer Account form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'editConsentMessageCustomerAccount', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setCustomerAccountMessage(page, messageCustomerAccount);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -180,17 +176,17 @@ describe('GDPR : Consent checkbox customization', async () => {
       await foClassicHomePage.goToMyAccountPage(page);
       await foClassicMyAccountPage.goToInformationPage(page);
 
-      const pageTitle = await accountIdentityPage.getPageTitle(page);
-      expect(pageTitle).to.equal(accountIdentityPage.pageTitle);
+      const pageTitle = await foClassicMyInformationsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicMyInformationsPage.pageTitle);
 
-      const gdprLabel = await accountIdentityPage.getGDPRLabel(page);
+      const gdprLabel = await foClassicMyInformationsPage.getGDPRLabel(page);
       expect(gdprLabel).to.contains(messageCustomerAccount);
     });
 
     it('should disable consent message on creation and customer account', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'disableConsentMessageCreationCustomer', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setAccountCreationStatus(page, false);
       await modPsGdprBoTabDataConsent.setCustomerAccountStatus(page, false);
 
@@ -202,16 +198,16 @@ describe('GDPR : Consent checkbox customization', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'checkAccountIdentityPageDisabled', baseContext);
 
       page = await modPsGdprBoTabDataConsent.changePage(browserContext, 1);
-      await accountIdentityPage.reloadPage(page);
+      await foClassicMyInformationsPage.reloadPage(page);
 
-      const hasGDPRLabel = await accountIdentityPage.hasGDPRLabel(page);
+      const hasGDPRLabel = await foClassicMyInformationsPage.hasGDPRLabel(page);
       expect(hasGDPRLabel).to.equal(false);
     });
 
     it('should logout', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'foLogout', baseContext);
 
-      await accountIdentityPage.logout(page);
+      await foClassicMyInformationsPage.logout(page);
 
       const isCustomerConnected = await foClassicLoginPage.isCustomerConnected(page);
       expect(isCustomerConnected).to.eq(false);
@@ -225,17 +221,17 @@ describe('GDPR : Consent checkbox customization', async () => {
 
       await foClassicLoginPage.goToCreateAccountPage(page);
 
-      const pageHeaderTitle = await foCreateAccountPage.getHeaderTitle(page);
-      expect(pageHeaderTitle).to.equal(foCreateAccountPage.formTitle);
+      const pageHeaderTitle = await foClassicCreateAccountPage.getHeaderTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicCreateAccountPage.formTitle);
 
-      const hasGDPRLabel = await foCreateAccountPage.hasGDPRLabel(page);
+      const hasGDPRLabel = await foClassicCreateAccountPage.hasGDPRLabel(page);
       expect(hasGDPRLabel).to.equal(false);
     });
 
     it('should edit the consent message for the Newsletter form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'editConsentMessageNewsletter', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setNewsletterMessage(page, messageNewsletter);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -246,7 +242,7 @@ describe('GDPR : Consent checkbox customization', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'checkNewsletterHomepageHidden', baseContext);
 
       page = await modPsGdprBoTabDataConsent.changePage(browserContext, 1);
-      await foCreateAccountPage.goToHomePage(page);
+      await foClassicCreateAccountPage.goToHomePage(page);
 
       const isHomePage = await foClassicHomePage.isHomePage(page);
       expect(isHomePage).to.eq(true);
@@ -343,7 +339,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should disable the consent message for the Newsletter form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setNewsletterStatusFalse', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setNewsletterStatus(page, false);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -363,7 +359,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should edit the consent message for the Product Comments form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setProductCommentsMessage', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setProductCommentsMessage(page, messageProductComments);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -423,7 +419,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should disable the consent message for the ProductComments form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setProductCommentsStatusFalse', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setProductCommentsStatus(page, false);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -451,7 +447,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should edit the consent message for the Contact Form form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setContactFormMessage', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setContactFormMessage(page, messageContactForm);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -477,7 +473,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should disable consent message on Contact Form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setContactFormStatusFalse', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setContactFormStatus(page, false);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -497,7 +493,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should edit the consent message for the Mail Alerts form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setMailAlertsMessage', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setMailAlertsMessage(page, messageMailAlerts);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -534,7 +530,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should edit the consent message for the Mail Alerts form in French', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setMailAlertsMessageFR', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setMailAlertsMessage(page, messageMailAlertsFR, dataLanguages.french.id);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);
@@ -567,7 +563,7 @@ describe('GDPR : Consent checkbox customization', async () => {
     it('should disable consent message on Mail Alerts Form', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setMailAlertsStatusFalse', baseContext);
 
-      page = await foCreateAccountPage.changePage(browserContext, 0);
+      page = await foClassicCreateAccountPage.changePage(browserContext, 0);
       await modPsGdprBoTabDataConsent.setMailAlertsStatus(page, false);
 
       const successMessage = await modPsGdprBoTabDataConsent.saveForm(page);

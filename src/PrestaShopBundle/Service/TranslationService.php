@@ -244,14 +244,14 @@ class TranslationService
                 ->createQueryBuilder('t')
                 ->where('t.lang = :lang')->setParameter('lang', $lang)
                 ->andWhere('t.domain = :domain')->setParameter('domain', $domain)
-                ->andWhere('t.key LIKE :key')->setParameter('key', $key)
+                ->andWhere('t.key = :key')->setParameter('key', $key)
             ;
             if ($theme !== null) {
                 $queryBuilder->andWhere('t.theme = :theme')->setParameter('theme', $theme);
             } else {
                 $queryBuilder->andWhere('t.theme IS NULL');
             }
-            $translation = $queryBuilder->getQuery()->getSingleResult();
+            $translation = $queryBuilder->getQuery()->getOneOrNullResult();
         } catch (Exception $exception) {
             $logger->error($exception->getMessage(), $log_context);
         }

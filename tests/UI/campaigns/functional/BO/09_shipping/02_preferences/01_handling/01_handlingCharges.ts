@@ -1,9 +1,5 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-// Import BO pages
-import preferencesPage from '@pages/BO/shipping/preferences';
+import {expect} from 'chai';
 
 import {
   boCarriersPage,
@@ -13,6 +9,7 @@ import {
   boCustomerSettingsPage,
   boDashboardPage,
   boLoginPage,
+  boShippingPreferencesPage,
   type BrowserContext,
   dataCustomers,
   dataGroups,
@@ -26,8 +23,6 @@ import {
   utilsFile,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
 
 const baseContext: string = 'functional_BO_shipping_preferences_handling_handlingCharges';
 
@@ -72,7 +67,6 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
   const defaultHandlingChargesValue: number = 2.00;
   const updateHandlingChargesValue: number = 4.00;
 
-  // before and after functions
   before(async function () {
     browserContext = await utilsPlaywright.createBrowserContext(this.browser);
     page = await utilsPlaywright.newTab(browserContext);
@@ -180,6 +174,19 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
       expect(textResult).to.contains(boCarriersPage.successfulCreationMessage);
     });
 
+    it('should return to carriers page', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'returnToCarriers', baseContext);
+
+      await boDashboardPage.goToSubMenu(
+        page,
+        boDashboardPage.shippingLink,
+        boDashboardPage.carriersLink,
+      );
+
+      const pageTitle = await boCarriersPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCarriersPage.pageTitle);
+    });
+
     it('should filter list by name and get the new carrier ID', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterToCheckNewCarrier', baseContext);
 
@@ -279,15 +286,15 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
 
       await boDashboardPage.goToSubMenu(page, boDashboardPage.shippingLink, boDashboardPage.shippingPreferencesLink);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should update \'Handling charges\' value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateHandlingCharges1', baseContext);
 
-      const textResult = await preferencesPage.setHandlingCharges(page, updateHandlingChargesValue.toString());
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setHandlingCharges(page, updateHandlingChargesValue.toString());
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
   });
 
@@ -367,15 +374,15 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
 
       page = await foClassicCheckoutPage.closePage(browserContext, page, 0);
 
-      const pageTitle = await preferencesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(preferencesPage.pageTitle);
+      const pageTitle = await boShippingPreferencesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boShippingPreferencesPage.pageTitle);
     });
 
     it('should update \'Handling charges\' value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'updateHandlingCharges2', baseContext);
 
-      const textResult = await preferencesPage.setHandlingCharges(page, defaultHandlingChargesValue.toString());
-      expect(textResult).to.contain(preferencesPage.successfulUpdateMessage);
+      const textResult = await boShippingPreferencesPage.setHandlingCharges(page, defaultHandlingChargesValue.toString());
+      expect(textResult).to.contain(boShippingPreferencesPage.successfulUpdateMessage);
     });
   });
 
@@ -409,8 +416,15 @@ describe('BO - Shipping - Preferences : Test handling charges for carriers in FO
 
       const textResult = await boCarriersPage.deleteCarrier(page, 1);
       expect(textResult).to.contains(boCarriersPage.successfulDeleteMessage);
+    });
+
+    it('should reset all filters', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'resetFilter', baseContext);
 
       await boCarriersPage.resetFilter(page);
+
+      const numberOfCustomerGroups = await boCarriersPage.resetAndGetNumberOfLines(page);
+      expect(numberOfCustomerGroups).to.be.above(0);
     });
   });
 

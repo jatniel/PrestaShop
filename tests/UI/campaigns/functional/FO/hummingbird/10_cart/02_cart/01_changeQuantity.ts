@@ -1,17 +1,13 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
-// Import FO pages
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
-import {expect} from 'chai';
 import {
   type BrowserContext,
   foHummingbirdCartPage,
   foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
   foHummingbirdModalQuickViewPage,
   type Page,
   utilsPlaywright,
@@ -28,7 +24,7 @@ Scenario:
 Post-condition:
 - Uninstall hummingbird theme
 */
-describe('FO - cart : Change quantity', async () => {
+describe('FO - Cart : Change quantity', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -60,7 +56,7 @@ describe('FO - cart : Change quantity', async () => {
 
       await foHummingbirdHomePage.quickViewProduct(page, 1);
       await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
       const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
       expect(pageTitle).to.equal(foHummingbirdCartPage.pageTitle);
@@ -118,7 +114,7 @@ describe('FO - cart : Change quantity', async () => {
 
       await foHummingbirdHomePage.quickViewProduct(page, 1);
       await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
       const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
       expect(pageTitle).to.equal(foHummingbirdCartPage.pageTitle);
@@ -164,7 +160,7 @@ describe('FO - cart : Change quantity', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'checkErrorMessage', baseContext);
 
       const alertText = await foHummingbirdCartPage.getNotificationMessage(page);
-      expect(alertText).to.contains(foHummingbirdCartPage.errorNotificationForProductQuantity);
+      expect(alertText).to.contains(foHummingbirdCartPage.errorNotificationForProductQuantity(300));
     });
 
     it('should set the quantity 3 in the input without validation', async function () {

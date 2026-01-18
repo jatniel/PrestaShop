@@ -12,6 +12,7 @@ GitHub contributors:
 - Adam
 - Adib Aroui
 - Adonis Karavokyros
+- Adrianllopis
 - Adrien
 - Adrien Astier
 - Adrien Foulon
@@ -89,6 +90,7 @@ GitHub contributors:
 - Arnaud Dohogne
 - Arnaud Lemercier
 - Arnaud Schaeffer
+- Arnaud Scoté
 - Arnaud104
 - Arťom Evsin
 - Ashish Sharawat
@@ -126,6 +128,7 @@ GitHub contributors:
 - BigZ
 - BluTiGeS
 - BMS-fenaille
+- Boki
 - Boris Hermans
 - Boubker Bribri
 - Brais Pato
@@ -156,6 +159,7 @@ GitHub contributors:
 - Charly Caillon
 - Chedly Farhani
 - Chen.Zhidong
+- ChillCode
 - Chris
 - Chris Gurk
 - Christian Kubitza
@@ -169,6 +173,7 @@ GitHub contributors:
 - cirykpopeye
 - Claire Meuriot
 - Clotaire Renaud
+- Clément Hervouet
 - cmouleyre
 - cocoweb
 - Code Utopia
@@ -197,6 +202,7 @@ GitHub contributors:
 - Dan-Orchard
 - danidomen
 - Daniel
+- Daniel Black
 - Daniel Böttner
 - Daniel Hlavacek
 - Daniel Martin
@@ -256,6 +262,7 @@ GitHub contributors:
 - Dream me up
 - DrySs
 - Dylan Paris
+- Dylan Denizon
 - dSevere
 - Dustin
 - Dvir Julius
@@ -348,6 +355,7 @@ GitHub contributors:
 - Gregory Roussac
 - grezlikowski
 - gRoussac
+- Grzegorz Wójcik
 - Grzegorz Zawadzki
 - Guilhem Fanton
 - Guillaume DELOINCE
@@ -400,6 +408,7 @@ GitHub contributors:
 - Ivan Shcherbakov
 - ivancasasempere
 - J. Danse
+- Jackoske
 - Jáchym Toušek
 - Jakub Łach
 - Jan Sýkora
@@ -429,6 +438,7 @@ GitHub contributors:
 - jessylenne
 - jestemradek
 - Jevgenij Visockij
+- Jin JI
 - Joan
 - Joan Juvanteny
 - Jocelyn Fournier
@@ -438,8 +448,12 @@ GitHub contributors:
 - joemartin247
 - Joep Hendrix
 - Johannes Schramm
+- John Aurry
+- John BOTELLA
 - John Cocula
 - John Zandbergen
+- johnk0306
+- JohnPAfr
 - Jonadabe
 - Jonas Erixon
 - Jónatan Núñez
@@ -462,7 +476,9 @@ GitHub contributors:
 - Julian Eberius
 - Julie Varisellaz
 - Julien Bouchez
+- Julien Bonvarlet
 - Julien Bourdeau
+- Julien Boyer
 - Julien Deniau
 - Julien Fenaille
 - Julien Gissinger
@@ -521,6 +537,7 @@ GitHub contributors:
 - Luc Vigato
 - Luca T.
 - Lucas CERDAN
+- Lucas Dindault
 - Lucas Rolff
 - LucasC
 - Ludovic Cardinale
@@ -546,6 +563,7 @@ GitHub contributors:
 - Manfredi Petruso
 - maniT4c
 - Manuel Jose Pulgar Anguita
+- Manuel Valentin
 - manuelbcd
 - Marc González Majoral
 - Marcin Kurek
@@ -563,6 +581,7 @@ GitHub contributors:
 - Marius Gudauskis
 - Mark Wienk
 - MarkC
+- Markus
 - Markus Staab
 - Martin Finkenflügel
 - Martin Fojtík
@@ -600,6 +619,8 @@ GitHub contributors:
 - Maxime Flasquin
 - Maxime Morel-Bailly
 - Maxime Vasse
+- Maxime Poulain
+- Maxime Sieczkowski
 - mchelh
 - mchojnacki
 - mdomenjoud
@@ -618,6 +639,7 @@ GitHub contributors:
 - Michael Voříšek
 - michaesc
 - Michał Kaleta
+- Michal Macek
 - Michal Špaček
 - Michel Antoine
 - Michel Courtade
@@ -656,11 +678,13 @@ GitHub contributors:
 - Nesrine Abdmouleh
 - nezenmoins
 - Nicklas Holmen
+- Nicko
 - Nicolas Camenisch
 - Nicolás Giacconi
 - Nicolas Lœuillet
 - Nicolas Martin
 - Nicolas Sorosac
+- Nicolas SOTRON
 - Niels Wouda
 - nigel
 - Nigel Helliwell
@@ -699,6 +723,7 @@ GitHub contributors:
 - Paul Coudeville
 - Paulo Baptista
 - Pavel Novitsky
+- Pawel Szostok
 - pbirnzain
 - Pedro Câmara
 - Pedro J. Parra
@@ -761,6 +786,7 @@ GitHub contributors:
 - Quentin Montant
 - Quentin MONTANT - KIWIK
 - Quetzacoalt91
+- r.fabiani
 - Racochejl
 - Rafael Cunha
 - Rafał Miłecki
@@ -800,12 +826,14 @@ GitHub contributors:
 - Romain 'Maz' BILLOIR
 - Romain BOCHEUX
 - Romain Couderc
+- Romain PIOT
 - Romain Soulard
 - romainberger
 - Roman Daniel Gabriel
 - Roman Gusev
 - Roman Kotyra
 - Roman Ondráček
+- Romuald Fabiani
 - Rúben Martins
 - Rudolf Kastl
 - Rudra Sarkar
@@ -859,6 +887,7 @@ GitHub contributors:
 - Sharak
 - ShepherdV8
 - Shipow
+- Shivam7-1
 - Shudrum
 - sidhujag
 - Simon
@@ -880,6 +909,7 @@ GitHub contributors:
 - Stephane Decisy
 - Steven "SDF" Sulley
 - Steven Sulley
+- Sullivan Monteiro
 - stickyrst
 - Stijn Houben
 - Stijn Stroeve
@@ -894,6 +924,7 @@ GitHub contributors:
 - Sylvestre Nicky
 - Symeon
 - Tadas Davidsonas
+- Tanguy
 - Tanguy JACQUET
 - Tanguy Salmon
 - Tatu Wikman
@@ -908,6 +939,7 @@ GitHub contributors:
 - theodiablo
 - therampagerado
 - Thibaud Chauviere
+- Thibault Blivet
 - Thierry Marianne
 - Thijs Simonis
 - Thoma
@@ -935,6 +967,7 @@ GitHub contributors:
 - TMMeilleur
 - tolispy
 - Tom Combet
+- Tom Girou
 - Tom Panier
 - Tomas
 - Tomas Ilginis
@@ -944,6 +977,7 @@ GitHub contributors:
 - tomek
 - Tony BOTALLA
 - toslan
+- Touxten
 - Travis-CI
 - tucoinfo
 - Tung Dao
@@ -998,6 +1032,7 @@ GitHub contributors:
 - Yannick Armand
 - Yneet
 - yo7hli
+- Yoan Ballesteros
 - Yohann Tilotti
 - Yolandavdvegt
 - Yoozio

@@ -1,14 +1,5 @@
 import {expect} from 'chai';
 import {disableHummingbird, enableHummingbird} from '@commonTests/BO/design/hummingbird';
-import pricesDropPage from '@pages/FO/hummingbird/pricesDrop';
-import newProductsPage from '@pages/FO/hummingbird/newProducts';
-import bestSalesPage from '@pages/FO/hummingbird/bestSales';
-import deliveryPage from '@pages/FO/hummingbird/delivery';
-import legalNoticePage from '@pages/FO/hummingbird/legalNotice';
-import termsAndConditionsOfUsePage from '@pages/FO/hummingbird/termsAndConditionsOfUse';
-import securePaymentPage from '@pages/FO/hummingbird/securePayment';
-import siteMapPage from '@pages/FO/hummingbird/siteMap';
-import storesPage from '@pages/FO/hummingbird/stores';
 import testContext from '@utils/testContext';
 
 import {
@@ -16,25 +7,37 @@ import {
   dataCategories,
   dataProducts,
   foHummingbirdAboutUsPage,
+  foHummingbirdBestSalesPage,
   foHummingbirdCategoryPage,
   foHummingbirdContactUsPage,
+  foHummingbirdCreateAccountPage,
+  foHummingbirdDeliveryPage,
+  foHummingbirdGuestOrderTrackingPage,
   foHummingbirdHomePage,
+  foHummingbirdLegalNoticePage,
+  foHummingbirdLoginPage,
+  foHummingbirdNewProductsPage,
+  foHummingbirdPricesDropPage,
   foHummingbirdProductPage,
   foHummingbirdSearchResultsPage,
+  foHummingbirdSecurePaymentPage,
+  foHummingbirdSitemapPage,
+  foHummingbirdStoresPage,
+  foHummingbirdTermsAndConditionsOfUsePage,
   type Page,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'audit_FO_hummingbird_guest';
 
-describe('FO - Pages in guest mode', async () => {
+describe('Check FO public pages', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
   // Pre-condition : Enable Hummingbird
   enableHummingbird(`${baseContext}_preTest_0`);
 
-  describe('Pages in guest mode', async () => {
+  describe('Check FO public pages', async () => {
     before(async function () {
       utilsPlaywright.setErrorsCaptured(true);
 
@@ -44,6 +47,10 @@ describe('FO - Pages in guest mode', async () => {
 
     after(async () => {
       await utilsPlaywright.closeBrowserContext(browserContext);
+    });
+
+    beforeEach(async () => {
+      utilsPlaywright.resetJsErrors();
     });
 
     it('should go to the home page', async function () {
@@ -108,9 +115,9 @@ describe('FO - Pages in guest mode', async () => {
 
     describe('Check \'Products\' footer links', async () => {
       [
-        {linkSelector: 'Prices drop', pageTitle: pricesDropPage.pageTitle},
-        {linkSelector: 'New products', pageTitle: newProductsPage.pageTitle},
-        {linkSelector: 'Best sellers', pageTitle: bestSalesPage.pageTitle},
+        {linkSelector: 'Prices drop', pageTitle: foHummingbirdPricesDropPage.pageTitle},
+        {linkSelector: 'New products', pageTitle: foHummingbirdNewProductsPage.pageTitle},
+        {linkSelector: 'Best sellers', pageTitle: foHummingbirdBestSalesPage.pageTitle},
       ].forEach((args, index: number) => {
         it(`should check '${args.linkSelector}' footer links`, async function () {
           await testContext.addContextItem(this, 'testIdentifier', `checkProductsFooterLinks${index}`, baseContext);
@@ -128,14 +135,14 @@ describe('FO - Pages in guest mode', async () => {
 
     describe('Check \'Our Company\' footer links', async () => {
       [
-        {linkSelector: 'Delivery', pageTitle: deliveryPage.pageTitle},
-        {linkSelector: 'Legal Notice', pageTitle: legalNoticePage.pageTitle},
-        {linkSelector: 'Terms and conditions of use', pageTitle: termsAndConditionsOfUsePage.pageTitle},
+        {linkSelector: 'Delivery', pageTitle: foHummingbirdDeliveryPage.pageTitle},
+        {linkSelector: 'Legal Notice', pageTitle: foHummingbirdLegalNoticePage.pageTitle},
+        {linkSelector: 'Terms and conditions of use', pageTitle: foHummingbirdTermsAndConditionsOfUsePage.pageTitle},
         {linkSelector: 'About us', pageTitle: foHummingbirdAboutUsPage.pageTitle},
-        {linkSelector: 'Secure payment', pageTitle: securePaymentPage.pageTitle},
+        {linkSelector: 'Secure payment', pageTitle: foHummingbirdSecurePaymentPage.pageTitle},
         {linkSelector: 'Contact us', pageTitle: foHummingbirdContactUsPage.pageTitle},
-        {linkSelector: 'Sitemap', pageTitle: siteMapPage.pageTitle},
-        {linkSelector: 'Stores', pageTitle: storesPage.pageTitle},
+        {linkSelector: 'Sitemap', pageTitle: foHummingbirdSitemapPage.pageTitle},
+        {linkSelector: 'Stores', pageTitle: foHummingbirdStoresPage.pageTitle},
       ].forEach((args, index: number) => {
         it(`should check '${args.linkSelector}' footer links`, async function () {
           await testContext.addContextItem(this, 'testIdentifier', `checkOurCompanyFooterLinks${index}`, baseContext);
@@ -147,6 +154,29 @@ describe('FO - Pages in guest mode', async () => {
 
           const jsErrors = utilsPlaywright.getJsErrors();
           expect(jsErrors.length).to.equals(0);
+        });
+      });
+    });
+
+    describe('Check \'Your Account\' footer links', async () => {
+      [
+        {linkSelector: 'Order tracking', pageTitle: foHummingbirdGuestOrderTrackingPage.pageTitle},
+        {linkSelector: 'Sign in', pageTitle: foHummingbirdLoginPage.pageTitle},
+        {linkSelector: 'Create account', pageTitle: foHummingbirdCreateAccountPage.formTitle},
+      ].forEach((args, index: number) => {
+        it(`should check '${args.linkSelector}' footer links`, async function () {
+          await testContext.addContextItem(this, 'testIdentifier', `checkYourAccountFooterLinks${index}`, baseContext);
+
+          await foHummingbirdHomePage.goToFooterLink(page, args.linkSelector);
+
+          let pageTitle: string = '';
+
+          if (args.linkSelector === 'Create account') {
+            pageTitle = await foHummingbirdCreateAccountPage.getHeaderTitle(page);
+          } else {
+            pageTitle = await foHummingbirdHomePage.getPageTitle(page);
+          }
+          expect(pageTitle).to.equal(args.pageTitle);
         });
       });
     });

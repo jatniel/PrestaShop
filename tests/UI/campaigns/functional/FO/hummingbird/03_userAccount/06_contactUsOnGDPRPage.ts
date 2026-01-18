@@ -1,15 +1,11 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
 // Import commonTests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
-// Import BO pages
-import customerServicePage from '@pages/BO/customerService/customerService';
-// Import FO pages
-import gdprPersonalDataPage from '@pages/FO/hummingbird/myAccount/gdprPersonalData';
-
 import {
+  boCustomerServicePage,
   boDashboardPage,
   boLoginPage,
   type BrowserContext,
@@ -20,12 +16,11 @@ import {
   foHummingbirdHomePage,
   foHummingbirdLoginPage,
   foHummingbirdMyAccountPage,
+  foHummingbirdMyGDPRPersonalDataPage,
   type Page,
   utilsFile,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
 
 const baseContext: string = 'functional_FO_hummingbird_userAccount_contactUsOnGDPRPage';
 
@@ -100,14 +95,14 @@ describe('FO - Account : Contact us on GDPR page', async () => {
 
       await foHummingbirdMyAccountPage.goToMyGDPRPersonalDataPage(page);
 
-      const pageTitle = await gdprPersonalDataPage.getPageTitle(page);
-      expect(pageTitle).to.equal(gdprPersonalDataPage.pageTitle);
+      const pageTitle = await foHummingbirdMyGDPRPersonalDataPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foHummingbirdMyGDPRPersonalDataPage.pageTitle);
     });
 
     it('should click on \'Contact page\' link from Rectification & Erasure requests block', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToContactUsPage', baseContext);
 
-      await gdprPersonalDataPage.goToContactUsPage(page);
+      await foHummingbirdMyGDPRPersonalDataPage.goToContactUsPage(page);
 
       const pageTitle = await foHummingbirdContactUsPage.getPageTitle(page);
       expect(pageTitle).to.equal(foHummingbirdContactUsPage.pageTitle);
@@ -141,22 +136,22 @@ describe('FO - Account : Contact us on GDPR page', async () => {
         boDashboardPage.customerServiceLink,
       );
 
-      const pageTitle = await customerServicePage.getPageTitle(page);
-      expect(pageTitle).to.contains(customerServicePage.pageTitle);
+      const pageTitle = await boCustomerServicePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCustomerServicePage.pageTitle);
     });
 
     it('should check message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkMessage', baseContext);
 
-      const message = await customerServicePage.getTextColumn(page, 1, 'message');
+      const message = await boCustomerServicePage.getTextColumn(page, 1, 'message');
       expect(message).to.contain(contactUsData.message);
     });
 
     it('should delete the message', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteMessage', baseContext);
 
-      const textResult = await customerServicePage.deleteMessage(page, 1);
-      expect(textResult).to.contains(customerServicePage.successfulDeleteMessage);
+      const textResult = await boCustomerServicePage.deleteMessage(page, 1);
+      expect(textResult).to.contains(boCustomerServicePage.successfulDeleteMessage);
     });
   });
 

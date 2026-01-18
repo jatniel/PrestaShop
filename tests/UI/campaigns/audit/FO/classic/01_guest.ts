@@ -1,13 +1,4 @@
 import {expect} from 'chai';
-import {pricesDropPage} from '@pages/FO/classic/pricesDrop';
-import {newProductsPage} from '@pages/FO/classic/newProducts';
-import {bestSalesPage} from '@pages/FO/classic/bestSales';
-import {deliveryPage} from '@pages/FO/classic/delivery';
-import {legalNoticePage} from '@pages/FO/classic/legalNotice';
-import {termsAndConditionsOfUsePage} from '@pages/FO/classic/termsAndConditionsOfUse';
-import {securePaymentPage} from '@pages/FO/classic/securePayment';
-import {siteMapPage} from '@pages/FO/classic/siteMap';
-import {storesPage} from '@pages/FO/classic/stores';
 import testContext from '@utils/testContext';
 
 import {
@@ -15,18 +6,30 @@ import {
   dataCategories,
   dataProducts,
   foClassicAboutUsPage,
+  foClassicBestSalesPage,
   foClassicCategoryPage,
   foClassicContactUsPage,
+  foClassicCreateAccountPage,
+  foClassicDeliveryPage,
+  foClassicGuestOrderTrackingPage,
   foClassicHomePage,
+  foClassicLegalNoticePage,
+  foClassicLoginPage,
+  foClassicNewProductsPage,
+  foClassicPricesDropPage,
   foClassicProductPage,
   foClassicSearchResultsPage,
+  foClassicSecurePaymentPage,
+  foClassicSitemapPage,
+  foClassicStoresPage,
+  foClassicTermsAndConditionsOfUsePage,
   type Page,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
 const baseContext: string = 'audit_FO_classic_guest';
 
-describe('FO - Pages in guest mode', async () => {
+describe('Check FO public pages', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -39,6 +42,10 @@ describe('FO - Pages in guest mode', async () => {
 
   after(async () => {
     await utilsPlaywright.closeBrowserContext(browserContext);
+  });
+
+  beforeEach(async () => {
+    utilsPlaywright.resetJsErrors();
   });
 
   it('should go to the home page', async function () {
@@ -103,9 +110,9 @@ describe('FO - Pages in guest mode', async () => {
 
   describe('Check \'Products\' footer links', async () => {
     [
-      {linkSelector: 'Prices drop', pageTitle: pricesDropPage.pageTitle},
-      {linkSelector: 'New products', pageTitle: newProductsPage.pageTitle},
-      {linkSelector: 'Best sellers', pageTitle: bestSalesPage.pageTitle},
+      {linkSelector: 'Prices drop', pageTitle: foClassicPricesDropPage.pageTitle},
+      {linkSelector: 'New products', pageTitle: foClassicNewProductsPage.pageTitle},
+      {linkSelector: 'Best sellers', pageTitle: foClassicBestSalesPage.pageTitle},
     ].forEach((args, index: number) => {
       it(`should check '${args.linkSelector}' footer links`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkProductsFooterLinks${index}`, baseContext);
@@ -123,14 +130,14 @@ describe('FO - Pages in guest mode', async () => {
 
   describe('Check \'Our Company\' footer links', async () => {
     [
-      {linkSelector: 'Delivery', pageTitle: deliveryPage.pageTitle},
-      {linkSelector: 'Legal Notice', pageTitle: legalNoticePage.pageTitle},
-      {linkSelector: 'Terms and conditions of use', pageTitle: termsAndConditionsOfUsePage.pageTitle},
+      {linkSelector: 'Delivery', pageTitle: foClassicDeliveryPage.pageTitle},
+      {linkSelector: 'Legal Notice', pageTitle: foClassicLegalNoticePage.pageTitle},
+      {linkSelector: 'Terms and conditions of use', pageTitle: foClassicTermsAndConditionsOfUsePage.pageTitle},
       {linkSelector: 'About us', pageTitle: foClassicAboutUsPage.pageTitle},
-      {linkSelector: 'Secure payment', pageTitle: securePaymentPage.pageTitle},
+      {linkSelector: 'Secure payment', pageTitle: foClassicSecurePaymentPage.pageTitle},
       {linkSelector: 'Contact us', pageTitle: foClassicContactUsPage.pageTitle},
-      {linkSelector: 'Sitemap', pageTitle: siteMapPage.pageTitle},
-      {linkSelector: 'Stores', pageTitle: storesPage.pageTitle},
+      {linkSelector: 'Sitemap', pageTitle: foClassicSitemapPage.pageTitle},
+      {linkSelector: 'Stores', pageTitle: foClassicStoresPage.pageTitle},
     ].forEach((args, index: number) => {
       it(`should check '${args.linkSelector}' footer links`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `checkOurCompanyFooterLinks${index}`, baseContext);
@@ -142,6 +149,29 @@ describe('FO - Pages in guest mode', async () => {
 
         const jsErrors = utilsPlaywright.getJsErrors();
         expect(jsErrors.length).to.equals(0);
+      });
+    });
+  });
+
+  describe('Check \'Your Account\' footer links', async () => {
+    [
+      {linkSelector: 'Order tracking', pageTitle: foClassicGuestOrderTrackingPage.pageTitle},
+      {linkSelector: 'Sign in', pageTitle: foClassicLoginPage.pageTitle},
+      {linkSelector: 'Create account', pageTitle: foClassicCreateAccountPage.formTitle},
+    ].forEach((args, index: number) => {
+      it(`should check '${args.linkSelector}' footer links`, async function () {
+        await testContext.addContextItem(this, 'testIdentifier', `checkYourAccountFooterLinks${index}`, baseContext);
+
+        await foClassicHomePage.goToFooterLink(page, args.linkSelector);
+
+        let pageTitle: string = '';
+
+        if (args.linkSelector === 'Create account') {
+          pageTitle = await foClassicCreateAccountPage.getHeaderTitle(page);
+        } else {
+          pageTitle = await foClassicHomePage.getPageTitle(page);
+        }
+        expect(pageTitle).to.equal(args.pageTitle);
       });
     });
   });

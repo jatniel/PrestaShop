@@ -1,11 +1,6 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-// Import FO pages
-import {createAccountPage as foCreateAccountPage} from '@pages/FO/classic/myAccount/add';
-
 import {expect} from 'chai';
+
 import {
   boDashboardPage,
   boLoginPage,
@@ -14,9 +9,11 @@ import {
   dataCustomers,
   dataModules,
   FakerCustomer,
+  foClassicCreateAccountPage,
   foClassicHomePage,
   foClassicLoginPage,
   foClassicMyAccountPage,
+  foClassicMyGDPRPersonalDataPage,
   modPsGdprBoMain,
   modPsGdprBoTabCustomerActivity,
   type Page,
@@ -24,7 +21,6 @@ import {
   utilsFile,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-import {gdprPersonalDataPage} from '@pages/FO/classic/myAccount/gdprPersonalData';
 
 const baseContext: string = 'modules_psgdpr_configuration_customerActivityTracking';
 
@@ -140,14 +136,14 @@ describe('BO - Modules - GDPR: Customer activity tracking', async () => {
 
       await foClassicMyAccountPage.goToMyGDPRPersonalDataPage(page);
 
-      const pageTitle = await gdprPersonalDataPage.getPageTitle(page);
-      expect(pageTitle).to.equal(gdprPersonalDataPage.pageTitle);
+      const pageTitle = await foClassicMyGDPRPersonalDataPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicMyGDPRPersonalDataPage.pageTitle);
     });
 
     it('should click on \'Get my data to CSV file\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnGetMyDataToCSV', baseContext);
 
-      const filePath = await gdprPersonalDataPage.exportDataToCSV(page);
+      const filePath = await foClassicMyGDPRPersonalDataPage.exportDataToCSV(page);
 
       const found = await utilsFile.doesFileExist(filePath);
       expect(found).to.equal(true);
@@ -159,7 +155,7 @@ describe('BO - Modules - GDPR: Customer activity tracking', async () => {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnGetMyDataToPDF', baseContext);
 
       await page.waitForTimeout(3000);
-      const filePath = await gdprPersonalDataPage.exportDataToPDF(page);
+      const filePath = await foClassicMyGDPRPersonalDataPage.exportDataToPDF(page);
 
       const found = await utilsFile.doesFileExist(filePath);
       expect(found).to.equal(true);
@@ -168,7 +164,7 @@ describe('BO - Modules - GDPR: Customer activity tracking', async () => {
     it('should logout', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'foLogout', baseContext);
 
-      await gdprPersonalDataPage.logout(page);
+      await foClassicMyGDPRPersonalDataPage.logout(page);
 
       const isCustomerConnected = await foClassicHomePage.isCustomerConnected(page);
       expect(isCustomerConnected, 'Customer is connected').to.eq(false);
@@ -211,14 +207,14 @@ describe('BO - Modules - GDPR: Customer activity tracking', async () => {
 
       await foClassicLoginPage.goToCreateAccountPage(page);
 
-      const pageHeaderTitle = await foCreateAccountPage.getHeaderTitle(page);
-      expect(pageHeaderTitle).to.equal(foCreateAccountPage.formTitle);
+      const pageHeaderTitle = await foClassicCreateAccountPage.getHeaderTitle(page);
+      expect(pageHeaderTitle).to.equal(foClassicCreateAccountPage.formTitle);
     });
 
     it('should create new account', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createNewAccount', baseContext);
 
-      await foCreateAccountPage.createAccount(page, customerData);
+      await foClassicCreateAccountPage.createAccount(page, customerData);
 
       const isCustomerConnected = await foClassicHomePage.isCustomerConnected(page);
       expect(isCustomerConnected).to.eq(true);

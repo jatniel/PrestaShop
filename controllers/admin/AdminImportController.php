@@ -109,8 +109,6 @@ class AdminImportControllerCore extends AdminController
             $this->trans('Store contacts', [], 'Admin.Advparameters.Feature'),
         ];
 
-        // @since 1.5.0
-
         $this->entities = array_flip($this->entities);
 
         switch ((int) Tools::getValue('entity')) {
@@ -133,6 +131,7 @@ class AdminImportControllerCore extends AdminController
                     'supplier_reference' => ['label' => $this->trans('Supplier reference', [], 'Admin.Advparameters.Feature')],
                     'reference' => ['label' => $this->trans('Reference', [], 'Admin.Global')],
                     'ean13' => ['label' => $this->trans('EAN-13', [], 'Admin.Advparameters.Feature')],
+                    'isbn' => ['label' => $this->trans('ISBN', [], 'Admin.Catalog.Feature')],
                     'upc' => ['label' => $this->trans('UPC', [], 'Admin.Advparameters.Feature')],
                     'mpn' => ['label' => $this->trans('MPN', [], 'Admin.Catalog.Feature')],
                     'wholesale_price' => ['label' => $this->trans('Cost price', [], 'Admin.Catalog.Feature')],
@@ -161,6 +160,7 @@ class AdminImportControllerCore extends AdminController
                     'reference' => '',
                     'supplier_reference' => '',
                     'ean13' => '',
+                    'isbn' => '',
                     'upc' => '',
                     'mpn' => '',
                     'wholesale_price' => 0,
@@ -234,6 +234,7 @@ class AdminImportControllerCore extends AdminController
                     'supplier' => ['label' => $this->trans('Supplier', [], 'Admin.Global')],
                     'manufacturer' => ['label' => $this->trans('Brand', [], 'Admin.Global')],
                     'ean13' => ['label' => $this->trans('EAN-13', [], 'Admin.Advparameters.Feature')],
+                    'isbn' => ['label' => $this->trans('ISBN', [], 'Admin.Catalog.Feature')],
                     'upc' => ['label' => $this->trans('UPC', [], 'Admin.Advparameters.Feature')],
                     'mpn' => ['label' => $this->trans('MPN', [], 'Admin.Catalog.Feature')],
                     'ecotax' => ['label' => $this->trans('Ecotax', [], 'Admin.Catalog.Feature')],
@@ -335,6 +336,7 @@ class AdminImportControllerCore extends AdminController
                     'uploadable_files' => 0,
                     'text_fields' => 0,
                     'is_virtual' => 0,
+                    'isbn' => '',
                 ];
 
                 break;
@@ -2496,7 +2498,7 @@ class AdminImportControllerCore extends AdminController
                                         $info['available_date'],
                                         false,
                                         $id_shop_list,
-                                        '',
+                                        (string) $info['isbn'],
                                         $info['low_stock_threshold'],
                                         $info['low_stock_alert']
                                     );
@@ -2529,7 +2531,7 @@ class AdminImportControllerCore extends AdminController
                             (int) $info['minimal_quantity'],
                             $id_shop_list,
                             $info['available_date'],
-                            '',
+                            (string) $info['isbn'],
                             $info['low_stock_threshold'],
                             $info['low_stock_alert']
                         );
@@ -3673,7 +3675,6 @@ class AdminImportControllerCore extends AdminController
     }
 
     /**
-     * @since 1.5.0
      * @deprecated Since 9.0 and will be removed in 10.0
      */
     public function supplyOrdersImport($offset = false, $limit = false, $validateOnly = false)

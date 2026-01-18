@@ -171,7 +171,7 @@ class GetFileControllerCore extends FrontController
             // Admin can directly access to file
             $filename = Tools::getValue('file');
             if (!Validate::isSha1($filename)) {
-                die(Tools::displayError('Filename is not a valid SHA1 checksum.'));
+                throw new PrestaShopException('Filename is not a valid SHA1 checksum.');
             }
             $file = _PS_DOWNLOAD_DIR_ . (string) preg_replace('/\.{2,}/', '.', $filename);
             $filename = ProductDownload::getFilenameFromFilename(Tools::getValue('file'));
@@ -256,9 +256,11 @@ class GetFileControllerCore extends FrontController
                 $this->displayCustomError('The product deadline is in the past.');
             }
 
-            $customer_deadline = (int) strtotime($info['date_expiration']);
-            if ($now > $customer_deadline && $info['date_expiration'] != '0000-00-00 00:00:00') {
-                $this->displayCustomError('Expiration date has passed, you cannot download this product');
+            if ($info['date_expiration'] !== '0000-00-00 00:00:00') {
+                $customer_deadline = (int) strtotime($info['date_expiration']);
+                if ($now > $customer_deadline) {
+                    $this->displayCustomError('Expiration date has passed, you cannot download this product');
+                }
             }
 
             if ($info['download_nb'] >= $info['nb_downloadable'] && $info['nb_downloadable']) {

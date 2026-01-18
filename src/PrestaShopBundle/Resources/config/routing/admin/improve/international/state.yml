@@ -5,6 +5,14 @@ admin_country_states:
     _controller: PrestaShopBundle\Controller\Admin\Improve\International\StateController::getStatesAction
     _legacy_controller: AdminStates
 
+admin_country_states_options:
+  path: /country-states-options
+  methods: [ GET ]
+  defaults:
+    _controller: PrestaShopBundle\Controller\Admin\Improve\International\StateController::getLegacyStatesOptionsAction
+    _legacy_controller: AdminStates
+    _legacy_link: AdminStates:states
+
 admin_states_index:
   path: /
   methods: [ GET ]
@@ -78,6 +86,14 @@ admin_states_bulk_disable_status:
     _controller: PrestaShopBundle\Controller\Admin\Improve\International\StateController::bulkDisableAction
     _legacy_controller: AdminStates
     _legacy_link: AdminStates:submitBulkdisableSelectionstate
+
+admin_states_bulk_update_zone:
+  path: /bulk-update-zone
+  methods: [ POST ]
+  defaults:
+    _controller: PrestaShopBundle\Controller\Admin\Improve\International\StateController::bulkUpdateZoneAction
+    _legacy_controller: AdminStates
+    _legacy_link: AdminStates:submitBulkAffectZonestate
 
 admin_states_toggle_status:
   path: /{stateId}/toggle-status

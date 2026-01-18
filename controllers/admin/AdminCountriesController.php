@@ -119,7 +119,7 @@ class AdminCountriesControllerCore extends AdminController
     {
         if (empty($this->display)) {
             $this->page_header_toolbar_btn['new_country'] = [
-                'href' => self::$currentIndex . '&addcountry&token=' . $this->token,
+                'href' => $this->context->link->getAdminLink('AdminCountries', true, [], ['addcountry' => 1]),
                 'desc' => $this->trans('Add new country', [], 'Admin.International.Feature'),
                 'icon' => 'process-icon-new',
             ];
@@ -199,7 +199,7 @@ class AdminCountriesControllerCore extends AdminController
                     'name' => 'name',
                     'lang' => true,
                     'required' => true,
-                    'hint' => $this->trans('Country name', [], 'Admin.International.Feature') . ' - ' . $this->trans('Invalid characters:', [], 'Admin.Global') . ' &lt;&gt;;=#{} ',
+                    'hint' => $this->trans('Country name', [], 'Admin.International.Feature') . ' - ' . $this->trans('Invalid characters:', [], 'Admin.Global') . ' &lt;&gt;{} ',
                 ],
                 [
                     'type' => 'text',
@@ -221,7 +221,6 @@ class AdminCountriesControllerCore extends AdminController
                     'name' => 'call_prefix',
                     'maxlength' => 3,
                     'class' => 'uppercase',
-                    'required' => true,
                     'hint' => $this->trans('International call prefix, (e.g. 1 for United States).', [], 'Admin.International.Help'),
                 ],
                 [
@@ -272,7 +271,6 @@ class AdminCountriesControllerCore extends AdminController
                     'type' => 'text',
                     'label' => $this->trans('ZIP/Postal code format', [], 'Admin.International.Feature'),
                     'name' => 'zip_code_format',
-                    'required' => true,
                     'desc' => $this->trans('Indicate the format of the postal code: use L for a letter, N for a number, and C for the country\'s ISO 3166-1 alpha-2 code. For example, NNNNN for the United States, France, Poland and many other; LNNNNLLL for Argentina, etc. If you do not want PrestaShop to verify the postal code for this country, leave it blank.', [], 'Admin.International.Help'),
                 ],
                 [

@@ -1,18 +1,15 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
 // Import commonTests
 import setMultiStoreStatus from '@commonTests/BO/advancedParameters/multistore';
 
-// Import pages
-import multiStorePage from '@pages/BO/advancedParameters/multistore';
-import addShopUrlPage from '@pages/BO/advancedParameters/multistore/url/addURL';
-import shopUrlPage from '@pages/BO/advancedParameters/multistore/url';
-
-import {expect} from 'chai';
 import {
   boDashboardPage,
   boLoginPage,
+  boMultistorePage,
+  boMultistoreShopUrlPage,
+  boMultistoreShopUrlCreatePage,
   type BrowserContext,
   FakerShop,
   type Page,
@@ -69,23 +66,23 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
         boDashboardPage.multistoreLink,
       );
 
-      const pageTitle = await multiStorePage.getPageTitle(page);
-      expect(pageTitle).to.contains(multiStorePage.pageTitle);
+      const pageTitle = await boMultistorePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boMultistorePage.pageTitle);
     });
 
     it('should go to shop Urls page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToShopUrlsPage', baseContext);
 
-      await multiStorePage.goToShopURLPage(page, 1);
+      await boMultistorePage.goToShopURLPage(page, 1);
 
-      const pageTitle = await multiStorePage.getPageTitle(page);
-      expect(pageTitle).to.contains(multiStorePage.pageTitle);
+      const pageTitle = await boMultistorePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boMultistorePage.pageTitle);
     });
 
     it('should reset filter and get the number of shop urls', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilter', baseContext);
 
-      numberOfShopUrls = await shopUrlPage.resetAndGetNumberOfLines(page);
+      numberOfShopUrls = await boMultistoreShopUrlPage.resetAndGetNumberOfLines(page);
       expect(numberOfShopUrls).to.be.above(0);
     });
   });
@@ -95,17 +92,17 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
     it('should go to add shop URL', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToAddURL', baseContext);
 
-      await shopUrlPage.goToAddNewUrl(page);
+      await boMultistoreShopUrlPage.goToAddNewUrl(page);
 
-      const pageTitle = await addShopUrlPage.getPageTitle(page);
-      expect(pageTitle).to.contains(addShopUrlPage.pageTitleCreate);
+      const pageTitle = await boMultistoreShopUrlCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boMultistoreShopUrlCreatePage.pageTitleCreate);
     });
 
     it('should create shop URL', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'addURL', baseContext);
 
-      const textResult = await addShopUrlPage.setVirtualUrl(page, ShopUrlData.name);
-      expect(textResult).to.contains(addShopUrlPage.successfulCreationMessage);
+      const textResult = await boMultistoreShopUrlCreatePage.setVirtualUrl(page, ShopUrlData.name);
+      expect(textResult).to.contains(boMultistoreShopUrlCreatePage.successfulCreationMessage);
     });
   });
 
@@ -114,12 +111,12 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
     it('should filter list by URL', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterForQuickEdit', baseContext);
 
-      await shopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
+      await boMultistoreShopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
 
-      const numberOfShopUrlsAfterFilter = await shopUrlPage.getNumberOfElementInGrid(page);
+      const numberOfShopUrlsAfterFilter = await boMultistoreShopUrlPage.getNumberOfElementInGrid(page);
 
       for (let i = 1; i <= numberOfShopUrlsAfterFilter; i++) {
-        const textColumn = await shopUrlPage.getTextColumn(page, i, 'url');
+        const textColumn = await boMultistoreShopUrlPage.getTextColumn(page, i, 'url');
         expect(textColumn).to.contains(ShopUrlData.name);
       }
     });
@@ -144,19 +141,19 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
       it(`should ${test.args.action} the column '${test.args.columnName}'`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.action}_${index}`, baseContext);
 
-        const isActionPerformed = await shopUrlPage.setStatus(page, 1, test.args.column, test.args.enabledValue);
+        const isActionPerformed = await boMultistoreShopUrlPage.setStatus(page, 1, test.args.column, test.args.enabledValue);
 
         if (isActionPerformed) {
-          const resultMessage = await shopUrlPage.getAlertSuccessBlockContent(page);
+          const resultMessage = await boMultistoreShopUrlPage.getAlertSuccessBlockContent(page);
 
           if (test.args.columnName === 'Enabled') {
-            expect(resultMessage).to.contains(shopUrlPage.successUpdateMessage);
+            expect(resultMessage).to.contains(boMultistoreShopUrlPage.successUpdateMessage);
           } else {
-            expect(resultMessage).to.contains(shopUrlPage.successfulUpdateMessage);
+            expect(resultMessage).to.contains(boMultistoreShopUrlPage.successfulUpdateMessage);
           }
         }
 
-        const carrierStatus = await shopUrlPage.getStatus(page, 1, test.args.column);
+        const carrierStatus = await boMultistoreShopUrlPage.getStatus(page, 1, test.args.column);
         expect(carrierStatus).to.be.equal(test.args.enabledValue);
       });
     });
@@ -164,21 +161,21 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterAfterEnableDisable', baseContext);
 
-      const numberOfShopUrlsAfterReset = await shopUrlPage.resetAndGetNumberOfLines(page);
+      const numberOfShopUrlsAfterReset = await boMultistoreShopUrlPage.resetAndGetNumberOfLines(page);
       expect(numberOfShopUrlsAfterReset).to.be.equal(numberOfShopUrls + 1);
     });
 
     it('should set the default URL as the main URL', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'setDefaultMainURL', baseContext);
 
-      const isActionPerformed = await shopUrlPage.setStatus(page, 1, '5', true);
+      const isActionPerformed = await boMultistoreShopUrlPage.setStatus(page, 1, '5', true);
 
       if (isActionPerformed) {
-        const resultMessage = await shopUrlPage.getAlertSuccessBlockContent(page);
-        expect(resultMessage).to.contains(shopUrlPage.successfulUpdateMessage);
+        const resultMessage = await boMultistoreShopUrlPage.getAlertSuccessBlockContent(page);
+        expect(resultMessage).to.contains(boMultistoreShopUrlPage.successfulUpdateMessage);
       }
 
-      const carrierStatus = await shopUrlPage.getStatus(page, 1, '5');
+      const carrierStatus = await boMultistoreShopUrlPage.getStatus(page, 1, '5');
       expect(carrierStatus).to.be.equal(true);
     });
   });
@@ -188,12 +185,12 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
     it('should filter list by URL', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'filterForBulkActions', baseContext);
 
-      await shopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
+      await boMultistoreShopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
 
-      const numberOfShopUrlsAfterFilter = await shopUrlPage.getNumberOfElementInGrid(page);
+      const numberOfShopUrlsAfterFilter = await boMultistoreShopUrlPage.getNumberOfElementInGrid(page);
 
       for (let i = 1; i <= numberOfShopUrlsAfterFilter; i++) {
-        const textColumn = await shopUrlPage.getTextColumn(page, i, 'url');
+        const textColumn = await boMultistoreShopUrlPage.getTextColumn(page, i, 'url');
         expect(textColumn).to.contains(ShopUrlData.name);
       }
     });
@@ -205,17 +202,17 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
       it(`should ${test.args.status} shop url with Bulk Actions and check result`, async function () {
         await testContext.addContextItem(this, 'testIdentifier', `${test.args.status}ShopUrl`, baseContext);
 
-        await shopUrlPage.bulkSetStatus(page, test.args.enable);
+        await boMultistoreShopUrlPage.bulkSetStatus(page, test.args.enable);
 
-        const textResult = await shopUrlPage.getAlertSuccessBlockContent(page);
-        expect(textResult, 'Status is not updated!').to.contains(shopUrlPage.successUpdateMessage);
+        const textResult = await boMultistoreShopUrlPage.getAlertSuccessBlockContent(page);
+        expect(textResult, 'Status is not updated!').to.contains(boMultistoreShopUrlPage.successUpdateMessage);
       });
     });
 
     it('should reset all filters', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'resetFilterAfterBulkActions', baseContext);
 
-      const numberOfShopUrlsAfterReset = await shopUrlPage.resetAndGetNumberOfLines(page);
+      const numberOfShopUrlsAfterReset = await boMultistoreShopUrlPage.resetAndGetNumberOfLines(page);
       expect(numberOfShopUrlsAfterReset).to.be.equal(numberOfShopUrls + 1);
     });
   });
@@ -225,10 +222,10 @@ describe('BO - Advanced Parameters - Multistore : Quick edit and bulk actions sh
     it('should delete the shop url contains \'ToDelete\'', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'deleteShopUrl', baseContext);
 
-      await shopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
+      await boMultistoreShopUrlPage.filterTable(page, 'input', 'url', ShopUrlData.name);
 
-      const textResult = await shopUrlPage.deleteShopURL(page, 1);
-      expect(textResult).to.contains(shopUrlPage.successfulDeleteMessage);
+      const textResult = await boMultistoreShopUrlPage.deleteShopURL(page, 1);
+      expect(textResult).to.contains(boMultistoreShopUrlPage.successfulDeleteMessage);
     });
   });
 

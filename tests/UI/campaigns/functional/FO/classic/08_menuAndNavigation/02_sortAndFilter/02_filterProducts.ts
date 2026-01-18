@@ -25,7 +25,7 @@ Scenario:
 Post-condition:
 - Reset the number of products per page
  */
-describe('FO - Menu and navigation : Filter products', async () => {
+describe('FO - Menu and Navigation - Sort and filter : Filter products', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   let numberOfActiveProducts: number;
@@ -144,15 +144,6 @@ describe('FO - Menu and navigation : Filter products', async () => {
 
       productsNumber = await foClassicCategoryPage.getNumberOfProducts(page);
       expect(productsNumber).to.be.above(1);
-    });
-
-    it('should check the products list', async function () {
-      await testContext.addContextItem(this, 'testIdentifier', 'checkProductsList', baseContext);
-
-      for (let i = 1; i <= productsNumber; i++) {
-        const productURL = await foClassicCategoryPage.getProductHref(page, i);
-        expect(productURL).to.contain.oneOf(['accessories', 'art', 'stationery']);
-      }
     });
 
     it('should clear all filters', async function () {

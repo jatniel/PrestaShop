@@ -29,6 +29,7 @@ declare(strict_types=1);
 namespace PrestaShop\PrestaShop\Adapter\Category\Repository;
 
 use Category;
+use Doctrine\DBAL\ArrayParameterType;
 use Doctrine\DBAL\Connection;
 use PrestaShop\PrestaShop\Core\Domain\Category\Exception\CategoryException;
 use PrestaShop\PrestaShop\Core\Domain\Category\Exception\CategoryNotFoundException;
@@ -36,6 +37,7 @@ use PrestaShop\PrestaShop\Core\Domain\Category\ValueObject\CategoryId;
 use PrestaShop\PrestaShop\Core\Domain\Language\ValueObject\LanguageId;
 use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\ProductId;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\ShopNotFoundException;
+use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopCollection;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopId;
 use PrestaShop\PrestaShop\Core\Exception\CoreException;
@@ -224,8 +226,8 @@ class CategoryRepository extends AbstractObjectModelRepository
             ->andWhere('cl.id_lang = :languageId')
             ->andWhere('c.level_depth >= 1')
             ->addGroupBy('c.id_category')
+            ->addOrderBy('c.level_depth', 'ASC')
             ->addOrderBy('c.id_category', 'ASC')
-            ->addOrderBy('c.position', 'ASC')
             ->setParameter('left', (int) $category['nleft'])
             ->setParameter('right', (int) $category['nright'])
             ->setParameter('languageId', $languageId->getValue())
@@ -279,6 +281,21 @@ class CategoryRepository extends AbstractObjectModelRepository
                 )
                 ->andWhere('cs.id_shop = :shopId')
                 ->setParameter('shopId', $shopConstraint->getShopId()->getValue())
+            ;
+        } elseif ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            $qb
+                ->innerJoin(
+                    'cp',
+                    $this->dbPrefix . 'category_shop',
+                    'cs',
+                    'cp.id_category = cs.id_category'
+                )
+                ->andWhere('cs.id_shop IN (:shopIds)')
+                ->setParameter(
+                    'shopIds',
+                    array_map(fn (ShopId $shopId) => $shopId->getValue(), $shopConstraint->getShopIds()),
+                    ArrayParameterType::INTEGER
+                )
             ;
         }
 

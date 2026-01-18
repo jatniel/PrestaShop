@@ -30,10 +30,13 @@ use PrestaShop\PrestaShop\Adapter\LegacyLogger;
 use PrestaShop\PrestaShop\Adapter\Module\ModuleDataProvider;
 use PrestaShop\PrestaShop\Adapter\Module\Repository\ModuleRepository;
 use PrestaShop\PrestaShop\Adapter\ServiceLocator;
+use PrestaShop\PrestaShop\Core\Context\LegacyControllerContext;
 use PrestaShop\PrestaShop\Core\Exception\ContainerNotFoundException;
 use PrestaShop\PrestaShop\Core\Foundation\Filesystem\FileSystem;
 use PrestaShop\PrestaShop\Core\Module\Legacy\ModuleInterface;
 use PrestaShop\PrestaShop\Core\Module\ModuleOverrideChecker;
+use PrestaShop\PrestaShop\Core\Module\Parser\ModuleParser;
+use PrestaShop\PrestaShop\Core\Module\Parser\ModuleParserException;
 use PrestaShop\PrestaShop\Core\Module\WidgetInterface;
 use PrestaShop\PrestaShop\Core\Security\Permission;
 use PrestaShop\TranslationToolsBundle\Translation\Helper\DomainHelper;
@@ -42,6 +45,7 @@ use Symfony\Component\DependencyInjection\Exception\ServiceCircularReferenceExce
 use Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException;
 use Symfony\Component\Filesystem\Filesystem as SfFileSystem;
 use Symfony\Component\Finder\Finder;
+use Twig\Environment;
 
 abstract class ModuleCore implements ModuleInterface
 {
@@ -162,8 +166,6 @@ abstract class ModuleCore implements ModuleInterface
     /** @var string Module web path (eg. '/shop/modules/modulename/') */
     protected $_path = null;
     /**
-     * @since 1.5.0.1
-     *
      * @var string Module local path (eg. '/home/prestashop/modules/modulename/')
      */
     protected $local_path = null;
@@ -197,6 +199,8 @@ abstract class ModuleCore implements ModuleInterface
 
     /** @var array Array filled with cache permissions (modules / employee profiles) */
     protected static $cache_lgc_access = [];
+
+    protected static ModuleParser $moduleParser;
 
     /** @var Context */
     protected $context;
@@ -360,7 +364,9 @@ abstract class ModuleCore implements ModuleInterface
                 }
                 $this->_path = __PS_BASE_URI__ . 'modules/' . $this->name . '/';
             }
-            if (!$this->context->controller instanceof Controller) {
+
+            // In Symfony BO, context controller is not a legacy Controller (proxy/context), keep modules cache to preserve module id.
+            if (!$this->context->controller instanceof Controller && !$this->context->controller instanceof LegacyControllerContext) {
                 static::$modules_cache = null;
             }
             $this->local_path = _PS_MODULE_DIR_ . $this->name . '/';
@@ -373,6 +379,23 @@ abstract class ModuleCore implements ModuleInterface
     public function install()
     {
         Hook::exec('actionModuleInstallBefore', ['object' => $this]);
+
+        PrestaShopLogger::addLog(
+            Context::getContext()->getTranslator()->trans(
+                'Starting module install: %s v%s',
+                [$this->name, $this->version],
+                'Admin.Modules.Notification'
+            ),
+            PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+            null,
+            'Module',
+            null,
+            true
+        );
+        if ($this->_errors) {
+            return false;
+        }
+
         // Check module name validation
         if (!Validate::isModuleName($this->name)) {
             $this->_errors[] = Context::getContext()->getTranslator()->trans('Unable to install the module (Module name is not valid).', [], 'Admin.Modules.Notification');
@@ -473,6 +496,18 @@ abstract class ModuleCore implements ModuleInterface
 
         // Adding Restrictions for client groups
         Group::addRestrictionsForModule($this->id, Shop::getShops(true, null, true));
+        PrestaShopLogger::addLog(
+            Context::getContext()->getTranslator()->trans(
+                'Module installed successfully: %s v%s',
+                [$this->name, $this->version],
+                'Admin.Modules.Notification'
+            ),
+            PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+            null,
+            'Module',
+            null,
+            true
+        );
         Hook::exec('actionModuleInstallAfter', ['object' => $this]);
 
         if (Module::$update_translations_after_install) {
@@ -561,6 +596,34 @@ abstract class ModuleCore implements ModuleInterface
             $module->database_version = $moduleVersion;
         }
 
+        if ($module->database_version == $module->version) {
+            PrestaShopLogger::addLog(
+                Context::getContext()->getTranslator()->trans(
+                    'Starting module install: %s v%s',
+                    [$module->name, $module->version],
+                    'Admin.Modules.Notification'
+                ),
+                PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+                null,
+                'Module',
+                null,
+                true
+            );
+        } else {
+            PrestaShopLogger::addLog(
+                Context::getContext()->getTranslator()->trans(
+                    'Starting module upgrade: %s v%s to v%s',
+                    [$module->name, $module->database_version, $module->version],
+                    'Admin.Modules.Notification'
+                ),
+                PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+                null,
+                'Module',
+                null,
+                true
+            );
+        }
+
         /*
          * Init default upgrade data.
          *
@@ -633,6 +696,18 @@ abstract class ModuleCore implements ModuleInterface
         // Update module version in DB with the last succeed upgrade
         if ($upgrade['upgraded_to']) {
             Module::upgradeModuleVersion($this->name, $upgrade['upgraded_to']);
+            PrestaShopLogger::addLog(
+                Context::getContext()->getTranslator()->trans(
+                    'Module upgraded successfully: %s to v%s',
+                    [$this->name, $upgrade['upgraded_to']],
+                    'Admin.Modules.Notification'
+                ),
+                PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+                null,
+                'Module',
+                null,
+                true
+            );
         }
         $this->setUpgradeMessage($upgrade);
 
@@ -683,11 +758,35 @@ abstract class ModuleCore implements ModuleInterface
         return null;
     }
 
-    public static function getModuleVersion(ModuleCore|stdClass $module): string
+    public static function getModuleVersion(ModuleCore|stdClass|string $module): string
     {
-        $moduleConfig = self::loadModuleXMLConfig($module->name);
+        $moduleName = is_string($module) ? $module : $module->name;
+        $moduleFilePath = _PS_MODULE_DIR_ . $moduleName . '/' . $moduleName . '.php';
+        $parser = static::getModuleParser();
+        try {
+            $parsedModuleInfos = $parser->parseModule($moduleFilePath);
+            if (!empty($parsedModuleInfos['version'])) {
+                return $parsedModuleInfos['version'];
+            }
+        } catch (ModuleParserException) {
+            // Do nothing, fallback XML config file
+        }
 
-        return $moduleConfig['version'] ?? $module->version;
+        $moduleConfig = self::loadModuleXMLConfig($moduleName);
+        if (!empty($moduleConfig['version'])) {
+            return $moduleConfig['version'];
+        }
+
+        return is_object($module) && property_exists($module, 'version') ? $module->version : '';
+    }
+
+    protected static function getModuleParser(): ModuleParser
+    {
+        if (!isset(static::$moduleParser)) {
+            static::$moduleParser = new ModuleParser();
+        }
+
+        return static::$moduleParser;
     }
 
     /**
@@ -796,6 +895,18 @@ abstract class ModuleCore implements ModuleInterface
     {
         Hook::exec('actionModuleUninstallBefore', ['object' => $this]);
 
+        PrestaShopLogger::addLog(
+            Context::getContext()->getTranslator()->trans(
+                'Starting module uninstall: %s v%s',
+                [$this->name, $this->version],
+                'Admin.Modules.Notification'
+            ),
+            PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+            null,
+            'Module',
+            null,
+            true
+        );
         // Check if module instance is valid
         if (!Validate::isUnsignedId($this->id)) {
             $this->_errors[] = Context::getContext()->getTranslator()->trans('The module is not installed.', [], 'Admin.Modules.Notification');
@@ -852,7 +963,18 @@ abstract class ModuleCore implements ModuleInterface
         if (Db::getInstance()->execute('DELETE FROM `' . _DB_PREFIX_ . 'module` WHERE `id_module` = ' . (int) $this->id)) {
             Cache::clean('Module::isInstalled' . $this->name);
             Cache::clean('Module::getModuleIdByName_' . pSQL($this->name));
-
+            PrestaShopLogger::addLog(
+                Context::getContext()->getTranslator()->trans(
+                    'Module uninstalled successfully: %s v%s',
+                    [$this->name, $this->version],
+                    'Admin.Modules.Notification'
+                ),
+                PrestaShopLogger::LOG_SEVERITY_LEVEL_INFORMATIVE,
+                null,
+                'Module',
+                null,
+                true
+            );
             Hook::exec('actionModuleUninstallAfter', ['object' => $this]);
 
             return true;
@@ -869,7 +991,6 @@ abstract class ModuleCore implements ModuleInterface
      *
      * @return bool
      *
-     * @since 1.4.1
      * @deprecated since 1.7
      * @see  PrestaShop\PrestaShop\Core\Module\ModuleManager->enable($name)
      */
@@ -1002,8 +1123,6 @@ abstract class ModuleCore implements ModuleInterface
      * @param array|string $name
      *
      * @return bool
-     *
-     * @since 1.7
      */
     public static function disableAllByName($name)
     {
@@ -1029,7 +1148,6 @@ abstract class ModuleCore implements ModuleInterface
      *
      * @return bool
      *
-     * @since 1.4.1
      * @deprecated since 1.7
      * @see  PrestaShop\PrestaShop\Core\Module\ModuleManager->disable($name)
      */
@@ -1235,11 +1353,11 @@ abstract class ModuleCore implements ModuleInterface
                 return false;
             }
 
-            die(Tools::displayError(Context::getContext()->getTranslator()->trans(
+            throw new PrestaShopException(Context::getContext()->getTranslator()->trans(
                 '%1$s is not a valid module name.',
                 [Tools::safeOutput($module_name)],
                 'Admin.Modules.Notification'
-            )));
+            ));
         }
 
         if (!isset(static::$_INSTANCE[$module_name])) {
@@ -2342,8 +2460,6 @@ abstract class ModuleCore implements ModuleInterface
     /**
      * Get realpath of a template of current module (check if template is overridden too).
      *
-     * @since 1.5.0
-     *
      * @param string $template
      *
      * @return string|null
@@ -2674,8 +2790,6 @@ abstract class ModuleCore implements ModuleInterface
     /**
      * Get module errors.
      *
-     * @since 1.5.0
-     *
      * @return array errors
      */
     public function getErrors()
@@ -2685,8 +2799,6 @@ abstract class ModuleCore implements ModuleInterface
 
     /**
      * Get module messages confirmation.
-     *
-     * @since 1.5.0
      *
      * @return array conf
      */
@@ -2698,8 +2810,6 @@ abstract class ModuleCore implements ModuleInterface
     /**
      * Get local path for module.
      *
-     * @since 1.5.0
-     *
      * @return string
      */
     public function getLocalPath()
@@ -2709,8 +2819,6 @@ abstract class ModuleCore implements ModuleInterface
 
     /**
      * Get uri path for module.
-     *
-     * @since 1.5.0
      *
      * @return string
      */
@@ -2943,7 +3051,7 @@ abstract class ModuleCore implements ModuleInterface
                     throw new Exception(Context::getContext()->getTranslator()->trans('The property %1$s in the class %2$s is already defined.', [$property->getName(), $classname], 'Admin.Modules.Notification'));
                 }
 
-                $module_file = preg_replace('/((?:public|private|protected)\s)\s*(static\s)?\s*(\$\b' . $property->getName() . '\b)/ism', "/*\n    * module: " . $this->name . "\n    * date: " . date('Y-m-d H:i:s') . "\n    * version: " . $this->version . "\n    */\n    $1$2$3", $module_file);
+                $module_file = preg_replace('/((?:public|private|protected)\s)\s*(static\s)?\s*(\w+\s)?\s*(\$\b' . $property->getName() . '\b)/ism', "/*\n    * module: " . $this->name . "\n    * date: " . date('Y-m-d H:i:s') . "\n    * version: " . $this->version . "\n    */\n    $1$2$3$4", $module_file);
                 if ($module_file === null) {
                     throw new Exception(Context::getContext()->getTranslator()->trans('Failed to override property %1$s in class %2$s.', [$property->getName(), $classname], 'Admin.Modules.Notification'));
                 }
@@ -3011,7 +3119,7 @@ abstract class ModuleCore implements ModuleInterface
 
                 // Same loop for properties
                 foreach ($module_class->getProperties() as $property) {
-                    $module_file = preg_replace('/((?:public|private|protected)\s)\s*(static\s)?\s*(\$\b' . $property->getName() . '\b)/ism', "/*\n    * module: " . $this->name . "\n    * date: " . date('Y-m-d H:i:s') . "\n    * version: " . $this->version . "\n    */\n    $1$2$3", $module_file);
+                    $module_file = preg_replace('/((?:public|private|protected)\s)\s*(static\s)?\s*(\w+\s)?\s*(\$\b' . $property->getName() . '\b)/ism', "/*\n    * module: " . $this->name . "\n    * date: " . date('Y-m-d H:i:s') . "\n    * version: " . $this->version . "\n    */\n    $1$2$3$4", $module_file);
                     if ($module_file === null) {
                         throw new Exception(Context::getContext()->getTranslator()->trans('Failed to override property %1$s in class %2$s.', [$property->getName(), $classname], 'Admin.Modules.Notification'));
                     }
@@ -3178,7 +3286,7 @@ abstract class ModuleCore implements ModuleInterface
 
                 // Replace the declaration line by #--remove--#
                 foreach ($override_file as $line_number => &$line_content) {
-                    if (preg_match('/(public|private|protected)\s+(static\s+)?(\$)?' . $property->getName() . '/i', $line_content)) {
+                    if (preg_match('/(public|private|protected)\s+(static\s+)?\s*(\w+\s+)?(\$)?' . $property->getName() . '/i', $line_content)) {
                         if (preg_match('/\* module: (' . $this->name . ')/ism', $override_file[$line_number - 4])) {
                             $override_file[$line_number - 5] = $override_file[$line_number - 4] = $override_file[$line_number - 3] = $override_file[$line_number - 2] = $override_file[$line_number - 1] = '#--remove--#';
                         }
@@ -3320,16 +3428,20 @@ abstract class ModuleCore implements ModuleInterface
         } while ($splDir->getRealPath() !== $directoryOverride);
     }
 
-    private function getWidgetHooks()
+    private function getWidgetHooks($existing_hook_ids = [])
     {
         $hooks = array_values(Hook::getHooks(false, true));
         $registeredHookList = Hook::getHookModuleList();
 
-        foreach ($hooks as &$hook) {
-            $hook['registered'] = !empty($registeredHookList[$hook['id_hook']][$this->id]);
-        }
+        return array_filter(array_map(function ($hook) use ($registeredHookList, $existing_hook_ids) {
+            if (!in_array($hook['id_hook'], $existing_hook_ids)) {
+                $hook['registered'] = !empty($registeredHookList[$hook['id_hook']][$this->id]);
 
-        return $hooks;
+                return $hook;
+            }
+
+            return null;
+        }, $hooks));
     }
 
     /**
@@ -3357,7 +3469,7 @@ abstract class ModuleCore implements ModuleInterface
         }
 
         if ($this instanceof WidgetInterface) {
-            $possible_hooks_list = array_merge($this->getWidgetHooks(), $possible_hooks_list);
+            $possible_hooks_list = array_merge($this->getWidgetHooks(array_column($possible_hooks_list, 'id_hook')), $possible_hooks_list);
             $name_column = array_column($possible_hooks_list, 'name');
             array_multisort($name_column, SORT_ASC, $possible_hooks_list);
         }
@@ -3448,21 +3560,52 @@ abstract class ModuleCore implements ModuleInterface
      *
      * @param string $serviceName
      *
-     * @return object|false If a container is not available it returns false
+     * @return object|null If a container is not available it returns false
      *
      * @throws ServiceCircularReferenceException When a circular reference is detected
      * @throws ServiceNotFoundException When the service is not defined
      * @throws Exception
      */
-    public function get($serviceName)
+    public function get(string $serviceName): ?object
     {
+        if ($serviceName === 'twig') {
+            trigger_deprecation('prestashop/prestashop', '9.0', 'Load Twig using $this->getTwig().');
+
+            return $this->getTwig();
+        }
+
         try {
             $container = $this->getContainer();
-        } catch (ContainerNotFoundException $e) {
-            return false;
+        } catch (ContainerNotFoundException) {
+            return null;
         }
 
         return $container->get($serviceName);
+    }
+
+    /**
+     * Check if the container has the requested service, it prevents throwing an ecception when
+     * trying to get a service not defined.
+     *
+     * @param string $serviceName
+     *
+     * @return bool
+     */
+    public function has(string $serviceName): bool
+    {
+        if ($serviceName === 'twig') {
+            trigger_deprecation('prestashop/prestashop', '9.0', 'Load Twig using $this->getTwig().');
+
+            return $this->getTwig() !== null;
+        }
+
+        try {
+            $container = $this->getContainer();
+        } catch (ContainerNotFoundException) {
+            return false;
+        }
+
+        return $container->has($serviceName);
     }
 
     /**
@@ -3485,6 +3628,15 @@ abstract class ModuleCore implements ModuleInterface
         }
 
         return $this->container;
+    }
+
+    public function getTwig(): ?Environment
+    {
+        if (method_exists($this->context->controller, 'getTwig')) {
+            return $this->context->controller->getTwig();
+        }
+
+        return null;
     }
 
     /**

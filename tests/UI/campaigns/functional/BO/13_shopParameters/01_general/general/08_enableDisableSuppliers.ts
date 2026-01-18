@@ -1,20 +1,15 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-// Import BO pages
-import suppliersPage from '@pages/BO/catalog/suppliers';
-// Import FO pages
-import {siteMapPage} from '@pages/FO/classic/siteMap';
-
 import {expect} from 'chai';
+
 import {
   boBrandsPage,
   boDashboardPage,
   boLoginPage,
   boShopParametersPage,
+  boSuppliersPage,
   type BrowserContext,
   foClassicHomePage,
+  foClassicSitemapPage,
   type Page,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
@@ -97,14 +92,14 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
 
           await boBrandsPage.goToSubTabSuppliers(page);
 
-          const pageTitle = await suppliersPage.getPageTitle(page);
-          expect(pageTitle).to.contains(suppliersPage.pageTitle);
+          const pageTitle = await boSuppliersPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boSuppliersPage.pageTitle);
         });
 
         it(`should check that the message alert contains '${test.args.action}'`, async function () {
           await testContext.addContextItem(this, 'testIdentifier', `checkAlertContains_${test.args.action}`, baseContext);
 
-          const text = await suppliersPage.getAlertInfoBlockParagraphContent(page);
+          const text = await boSuppliersPage.getAlertInfoBlockParagraphContent(page);
           expect(text).to.contains(test.args.action.toLowerCase());
         });
       }
@@ -113,7 +108,7 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
         await testContext.addContextItem(this, 'testIdentifier', `goToFO_${test.args.action}`, baseContext);
 
         // View shop
-        page = await suppliersPage.viewMyShop(page);
+        page = await boSuppliersPage.viewMyShop(page);
         // Change shop language
         await foClassicHomePage.changeLanguage(page, 'en');
 
@@ -126,10 +121,10 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
 
         await foClassicHomePage.goToFooterLink(page, 'Sitemap');
 
-        const pageTitle = await siteMapPage.getPageTitle(page);
-        expect(pageTitle).to.equal(siteMapPage.pageTitle);
+        const pageTitle = await foClassicSitemapPage.getPageTitle(page);
+        expect(pageTitle).to.equal(foClassicSitemapPage.pageTitle);
 
-        const exist = await siteMapPage.isSuppliersLinkVisible(page);
+        const exist = await foClassicSitemapPage.isSuppliersLinkVisible(page);
         expect(exist).to.be.equal(test.args.exist);
       });
 
@@ -137,7 +132,7 @@ describe('BO - Shop Parameters - General : Enable/Disable display suppliers', as
         it('should go back to BO', async function () {
           await testContext.addContextItem(this, 'testIdentifier', `goBackToBo_${test.args.action}`, baseContext);
 
-          page = await siteMapPage.closePage(browserContext, page, 0);
+          page = await foClassicSitemapPage.closePage(browserContext, page, 0);
 
           const pageTitle = await boShopParametersPage.getPageTitle(page);
           expect(pageTitle).to.contains(boShopParametersPage.pageTitle);

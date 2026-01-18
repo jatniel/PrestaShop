@@ -29,15 +29,22 @@ declare(strict_types=1);
 namespace PrestaShop\PrestaShop\Core\Module;
 
 use Exception;
+use Language as LegacyLanguage;
 use Module as LegacyModule;
 use PrestaShop\PrestaShop\Adapter\HookManager;
 use PrestaShop\PrestaShop\Adapter\Module\AdminModuleDataProvider;
 use PrestaShop\PrestaShop\Adapter\Module\ModuleDataProvider;
 use PrestaShop\PrestaShop\Core\Module\SourceHandler\SourceHandlerFactory;
+use PrestaShopBundle\Entity\Repository\LangRepository;
 use PrestaShopBundle\Event\ModuleManagementEvent;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\Finder;
+use Symfony\Component\Translation\Loader\XliffFileLoader;
+use Symfony\Component\Translation\TranslatorBagInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
+use Throwable;
+use Validate as LegacyValidate;
 
 /**
  * Responsible for handling all actions with modules.
@@ -47,47 +54,22 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class ModuleManager implements ModuleManagerInterface
 {
-    /** @var ModuleRepository */
-    private $moduleRepository;
-
-    /** @var ModuleDataProvider */
-    private $moduleDataProvider;
-
-    /** @var AdminModuleDataProvider */
-    private $adminModuleDataProvider;
-
-    /** @var SourceHandlerFactory */
-    private $sourceFactory;
-
-    /** @var TranslatorInterface */
-    private $translator;
-
-    /** @var EventDispatcherInterface */
-    private $eventDispatcher;
-
-    /** @var HookManager */
-    private $hookManager;
-
     /** @var Filesystem */
     private $filesystem;
 
     public function __construct(
-        ModuleRepository $moduleRepository,
-        ModuleDataProvider $moduleDataProvider,
-        AdminModuleDataProvider $adminModuleDataProvider,
-        SourceHandlerFactory $sourceFactory,
-        TranslatorInterface $translator,
-        EventDispatcherInterface $eventDispatcher,
-        HookManager $hookManager
+        private readonly ModuleRepository $moduleRepository,
+        private readonly ModuleDataProvider $moduleDataProvider,
+        private readonly AdminModuleDataProvider $adminModuleDataProvider,
+        private readonly SourceHandlerFactory $sourceFactory,
+        private readonly TranslatorInterface $translator,
+        private readonly EventDispatcherInterface $eventDispatcher,
+        private readonly HookManager $hookManager,
+        private readonly string $modulesDir,
+        private readonly XliffFileLoader $xliffFileLoader,
+        private readonly ?LangRepository $languageRepository = null,
     ) {
         $this->filesystem = new Filesystem();
-        $this->moduleRepository = $moduleRepository;
-        $this->moduleDataProvider = $moduleDataProvider;
-        $this->adminModuleDataProvider = $adminModuleDataProvider;
-        $this->sourceFactory = $sourceFactory;
-        $this->translator = $translator;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->hookManager = $hookManager;
     }
 
     public function upload(string $source): string
@@ -128,9 +110,13 @@ class ModuleManager implements ModuleManagerInterface
             $handler->handle($source);
         }
 
+        $this->updateTranslatorCatalogues($name);
+
         $this->hookManager->exec('actionBeforeInstallModule', ['moduleName' => $name, 'source' => $source]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $installed = $module->onInstall();
         if ($installed) {
             // Only trigger install event if install has succeeded otherwise it could automatically add tabs linked to a
@@ -154,6 +140,8 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforePostInstallModule', ['moduleName' => $name]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $result = $module->onPostInstall();
 
         $this->dispatch(ModuleManagementEvent::POST_INSTALL, $module);
@@ -176,6 +164,8 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforeUninstallModule', ['moduleName' => $name]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $uninstalled = $module->onUninstall();
 
         if ($deleteFiles && $path = $this->moduleRepository->getModulePath($name)) {
@@ -199,6 +189,7 @@ class ModuleManager implements ModuleManagerInterface
         }
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
 
         $path = $this->moduleRepository->getModulePath($name);
         $this->filesystem->remove($path);
@@ -230,6 +221,8 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforeUpgradeModule', ['moduleName' => $name, 'source' => $source]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $upgraded = $this->upgradeMigration($name) && $module->onUpgrade($module->get('version'));
 
         $this->dispatch(ModuleManagementEvent::UPGRADE, $module);
@@ -252,6 +245,8 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforeEnableModule', ['moduleName' => $name]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $enabled = $module->onEnable();
         $this->dispatch(ModuleManagementEvent::ENABLE, $module);
 
@@ -273,6 +268,8 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforeDisableModule', ['moduleName' => $name]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
+
         $disabled = $module->onDisable();
         $this->dispatch(ModuleManagementEvent::DISABLE, $module);
 
@@ -297,8 +294,9 @@ class ModuleManager implements ModuleManagerInterface
         $this->hookManager->exec('actionBeforeResetModule', ['moduleName' => $name]);
 
         $module = $this->moduleRepository->getModule($name);
+        $this->dispatchPreAction($module);
 
-        if ($keepData && method_exists($module, 'reset')) {
+        if ($keepData && method_exists($module->getInstance(), 'reset')) {
             $reset = $module->onReset();
             $this->dispatch(ModuleManagementEvent::RESET, $module);
         } else {
@@ -328,13 +326,14 @@ class ModuleManager implements ModuleManagerInterface
         $module = $this->moduleRepository->getModule($name);
         if ($module->hasValidInstance()) {
             $errors = array_filter($module->getInstance()->getErrors());
-            $error = array_pop($errors);
-            if (empty($error)) {
+            if (empty($errors)) {
                 $error = $this->translator->trans(
                     'Unfortunately, the module %module% did not return additional details.',
                     ['%module%' => $name],
                     'Admin.Modules.Notification'
                 );
+            } else {
+                $error = implode(', ', $errors);
             }
         } else {
             $error = $this->translator->trans(
@@ -342,9 +341,70 @@ class ModuleManager implements ModuleManagerInterface
                 ['%module%' => $name],
                 'Admin.Modules.Notification'
             );
+
+            $validityErrors = [];
+            if (!LegacyValidate::isModuleName($name)) {
+                $validityErrors[] = $name . ' module name is invalid';
+            } else {
+                try {
+                    LegacyModule::getInstanceByName($name);
+                } catch (Throwable $e) {
+                    $validityErrors[] = $e->getMessage();
+                }
+            }
+
+            if (!empty($validityErrors)) {
+                $error .= ' Errors details: ' . implode(', ', $validityErrors);
+            }
         }
 
         return $error;
+    }
+
+    /**
+     * Load the module catalog in the translator (initial load only includes modules present at the beginning of the process,
+     * so we manually add it in case the module has just been uploaded)
+     *
+     * @param string $moduleName
+     *
+     * @return void
+     */
+    protected function updateTranslatorCatalogues(string $moduleName): void
+    {
+        if ($this->translator instanceof TranslatorBagInterface) {
+            $translationFolder = $this->modulesDir . DIRECTORY_SEPARATOR . $moduleName . DIRECTORY_SEPARATOR . 'translations';
+            if (is_dir($translationFolder)) {
+                foreach ($this->getInstalledLocales() as $locale) {
+                    $catalogue = $this->translator->getCatalogue($locale);
+                    $languageFolder = $translationFolder . DIRECTORY_SEPARATOR . $locale;
+                    if (!is_dir($languageFolder)) {
+                        continue;
+                    }
+
+                    $finder = new Finder();
+                    foreach ($finder->files()->in($languageFolder) as $xlfFile) {
+                        $fileParts = explode('.', $xlfFile->getFilename());
+                        if (count($fileParts) === 3 && $fileParts[count($fileParts) - 1] === 'xlf') {
+                            $catalogueDomain = $fileParts[0];
+                            $catalogue->addCatalogue($this->xliffFileLoader->load($xlfFile->getRealPath(), $locale, $catalogueDomain));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private function getInstalledLocales(): array
+    {
+        if ($this->languageRepository) {
+            $languages = $this->languageRepository->getMapping();
+        } else {
+            $languages = LegacyLanguage::getLanguages(false);
+        }
+
+        return array_map(function (array $language) {
+            return $language['locale'];
+        }, $languages);
     }
 
     protected function upgradeMigration(string $name): bool
@@ -385,5 +445,19 @@ class ModuleManager implements ModuleManagerInterface
     private function dispatch(string $event, ModuleInterface $module): void
     {
         $this->eventDispatcher->dispatch(new ModuleManagementEvent($module), $event);
+    }
+
+    /**
+     * Before any action we dispatch this event, it allows the event to know a module action is undergoing, this
+     * way even if it fails and the actual action event is not triggered (they are only triggered after success),
+     * we can still clear the cache which can prevent some failure after an installation failed for example.
+     *
+     * @param ModuleInterface $module
+     *
+     * @return void
+     */
+    private function dispatchPreAction(ModuleInterface $module): void
+    {
+        $this->eventDispatcher->dispatch(new ModuleManagementEvent($module), ModuleManagementEvent::PRE_ACTION);
     }
 }

@@ -1,15 +1,9 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-// Import BO pages
-import categoriesPage from '@pages/BO/catalog/categories';
-import editCategoryPage from '@pages/BO/catalog/categories/add';
-// Import FO pages
-import {siteMapPage} from '@pages/FO/classic/siteMap';
-
 import {expect} from 'chai';
+
 import {
+  boCategoriesPage,
+  boCategoriesCreatePage,
   boDashboardPage,
   boLoginPage,
   type BrowserContext,
@@ -17,6 +11,7 @@ import {
   FakerCategory,
   foClassicHomePage,
   foClassicCategoryPage,
+  foClassicSitemapPage,
   type Page,
   utilsFile,
   utilsPlaywright,
@@ -24,15 +19,13 @@ import {
 
 const baseContext: string = 'functional_BO_catalog_categories_editHomeCategory';
 
-// Edit home category
 describe('BO - Catalog - Categories : Edit home category', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   let categoryID: number;
 
-  const editCategoryData: FakerCategory = new FakerCategory({name: 'Home'});
+  const editCategoryData: FakerCategory = new FakerCategory({name: 'Home 123'});
 
-  // before and after functions
   before(async function () {
     browserContext = await utilsPlaywright.createBrowserContext(this.browser);
     page = await utilsPlaywright.newTab(browserContext);
@@ -64,34 +57,34 @@ describe('BO - Catalog - Categories : Edit home category', async () => {
       boDashboardPage.catalogParentLink,
       boDashboardPage.categoriesLink,
     );
-    await categoriesPage.closeSfToolBar(page);
+    await boCategoriesPage.closeSfToolBar(page);
 
-    const pageTitle = await categoriesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(categoriesPage.pageTitle);
+    const pageTitle = await boCategoriesPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boCategoriesPage.pageTitle);
   });
 
   it('should go to Edit Home category page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToEditHomePage1', baseContext);
 
-    await categoriesPage.goToEditHomeCategoryPage(page);
+    await boCategoriesPage.goToEditHomeCategoryPage(page);
 
-    const pageTitle = await editCategoryPage.getPageTitle(page);
-    expect(pageTitle).to.contains(editCategoryPage.pageTitleEdit);
+    const pageTitle = await boCategoriesCreatePage.getPageTitle(page);
+    expect(pageTitle).to.contains(boCategoriesCreatePage.pageTitleEdit);
   });
 
   it('should update the category', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'updateCategory', baseContext);
 
-    const textResult = await editCategoryPage.editHomeCategory(page, editCategoryData);
-    expect(textResult).to.equal(categoriesPage.pageRootTitle);
+    categoryID = await boCategoriesCreatePage.getIDCategory(page);
+
+    const textResult = await boCategoriesCreatePage.editHomeCategory(page, editCategoryData);
+    expect(textResult).to.equal(boCategoriesPage.pageTitle);
   });
 
   it('should go to FO and check the updated category', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'checkCreatedCategoryFO', baseContext);
-
-    categoryID = parseInt(await categoriesPage.getTextColumnFromTableCategories(page, 1, 'id_category'), 10);
     // View Shop
-    page = await categoriesPage.viewMyShop(page);
+    page = await boCategoriesPage.viewMyShop(page);
     // Change FO language
     await foClassicHomePage.changeLanguage(page, 'en');
 
@@ -101,18 +94,18 @@ describe('BO - Catalog - Categories : Edit home category', async () => {
     // Go to sitemap page
     await foClassicHomePage.goToFooterLink(page, 'Sitemap');
 
-    const pageTitle = await siteMapPage.getPageTitle(page);
-    expect(pageTitle).to.equal(siteMapPage.pageTitle);
+    const pageTitle = await foClassicSitemapPage.getPageTitle(page);
+    expect(pageTitle).to.equal(foClassicSitemapPage.pageTitle);
 
     // Check category name
-    const categoryName = await siteMapPage.getCategoryName(page, categoryID);
+    const categoryName = await foClassicSitemapPage.getCategoryName(page, categoryID);
     expect(categoryName).to.contains(editCategoryData.name);
   });
 
   it('should view the created category', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'viewCreatedCategoryFO', baseContext);
 
-    await siteMapPage.viewCreatedCategory(page, categoryID);
+    await foClassicSitemapPage.viewCreatedCategory(page, categoryID);
 
     // Check category name
     const pageTitle = await foClassicCategoryPage.getHeaderPageName(page);
@@ -129,32 +122,23 @@ describe('BO - Catalog - Categories : Edit home category', async () => {
     // Close tab and init other page objects with new current tab
     page = await foClassicCategoryPage.closePage(browserContext, page, 0);
 
-    const pageTitle = await categoriesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(categoriesPage.pageRootTitle);
-  });
-
-  it('should click on view category', async function () {
-    await testContext.addContextItem(this, 'testIdentifier', 'goToViewCreatedCategoryPage', baseContext);
-
-    await categoriesPage.goToViewSubCategoriesPage(page, 1);
-
-    const pageTitle = await categoriesPage.getPageTitle(page);
-    expect(pageTitle).to.contains(categoriesPage.pageTitle);
+    const pageTitle = await boCategoriesPage.getPageTitle(page);
+    expect(pageTitle).to.contains(boCategoriesPage.pageTitle);
   });
 
   it('should go to Edit Home category page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToEditHomePage2', baseContext);
 
-    await categoriesPage.goToEditHomeCategoryPage(page);
+    await boCategoriesPage.goToEditHomeCategoryPage(page);
 
-    const pageTitle = await editCategoryPage.getPageTitle(page);
+    const pageTitle = await boCategoriesCreatePage.getPageTitle(page);
     expect(pageTitle).to.contains(editCategoryData.name);
   });
 
   it('should reset update the category', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'resetUpdateCategory', baseContext);
 
-    const textResult = await editCategoryPage.editHomeCategory(page, dataCategories.home);
-    expect(textResult).to.equal(categoriesPage.pageRootTitle);
+    const textResult = await boCategoriesCreatePage.editHomeCategory(page, dataCategories.home);
+    expect(textResult).to.equal(boCategoriesPage.pageTitle);
   });
 });

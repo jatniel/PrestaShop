@@ -17,13 +17,14 @@ import {
 
 const baseContext: string = 'functional_API_endpoints_apiClient_deleteApiClientId';
 
-describe('API : DELETE /api-client/{apiClientId}', async () => {
+describe('API : DELETE /api-clients/{apiClientId}', async () => {
   let apiContext: APIRequestContext;
   let browserContext: BrowserContext;
   let page: Page;
   let accessToken: string;
   let clientSecret: string;
   let idApiClient: number;
+  let initialNumberOfApiClients: number;
 
   const clientScope: string = 'api_client_write';
   const clientData: FakerAPIClient = new FakerAPIClient({
@@ -44,7 +45,7 @@ describe('API : DELETE /api-client/{apiClientId}', async () => {
     await utilsPlaywright.closeBrowserContext(browserContext);
   });
 
-  describe('BackOffice : Fetch the access token', async () => {
+  describe('API : Fetch the access token', async () => {
     it('should login in BO', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'loginBO', baseContext);
 
@@ -68,11 +69,11 @@ describe('API : DELETE /api-client/{apiClientId}', async () => {
       expect(pageTitle).to.eq(boApiClientsPage.pageTitle);
     });
 
-    it('should check that no records found', async function () {
-      await testContext.addContextItem(this, 'testIdentifier', 'checkThatNoRecordFound', baseContext);
+    it('should check that at least one API client is present', async function () {
+      await testContext.addContextItem(this, 'testIdentifier', 'checkThatOneAPIClientExists', baseContext);
 
-      const noRecordsFoundText = await boApiClientsPage.getTextForEmptyTable(page);
-      expect(noRecordsFoundText).to.contains('warning No records found');
+      initialNumberOfApiClients = await boApiClientsPage.getNumberOfElementInGrid(page);
+      expect(initialNumberOfApiClients).to.be.greaterThanOrEqual(1);
     });
 
     it('should go to add New API Client page', async function () {
@@ -143,16 +144,20 @@ describe('API : DELETE /api-client/{apiClientId}', async () => {
     it('should get informations', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'getInformations', baseContext);
 
-      idApiClient = parseInt(await boApiClientsPage.getTextColumn(page, 'id_api_client', 1), 10);
+      const apiClientsNumber = await boApiClientsPage.getNumberOfElementInGrid(page);
+      expect(apiClientsNumber).to.be.equal(initialNumberOfApiClients + 1);
+
+      // Get ID from last created API Client
+      idApiClient = parseInt(await boApiClientsPage.getTextColumn(page, 'id_api_client', apiClientsNumber), 10);
       expect(idApiClient).to.be.gt(0);
     });
   });
 
   describe('API : Delete the API Access', async () => {
-    it('should request the endpoint /api-client/{apiClientId}', async function () {
+    it('should request the endpoint /api-clients/{apiClientId}', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'requestEndpoint', baseContext);
 
-      const apiResponse = await apiContext.delete(`api-client/${idApiClient}`, {
+      const apiResponse = await apiContext.delete(`api-clients/${idApiClient}`, {
         headers: {
           Authorization: `Bearer ${accessToken}`,
         },
@@ -167,8 +172,8 @@ describe('API : DELETE /api-client/{apiClientId}', async () => {
 
       await boApiClientsPage.reloadPage(page);
 
-      const numberOfGroupsAfterCreation = await boApiClientsPage.getNumberOfElementInGrid(page);
-      expect(numberOfGroupsAfterCreation).to.be.equal(0);
+      const numberOfGroupsAfterDeletion = await boApiClientsPage.getNumberOfElementInGrid(page);
+      expect(numberOfGroupsAfterDeletion).to.be.equal(initialNumberOfApiClients);
     });
   });
 });

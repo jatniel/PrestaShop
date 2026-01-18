@@ -36,7 +36,7 @@ use PrestaShopBundle\ApiPlatform\Metadata\CQRSGet;
 #[ApiResource(
     operations: [
         new CQRSGet(
-            uriTemplate: '/api-client/infos',
+            uriTemplate: '/api-clients/infos',
             CQRSQuery: GetApiClientForEditing::class,
             scopes: [],
             CQRSQueryMapping: [
@@ -44,6 +44,7 @@ use PrestaShopBundle\ApiPlatform\Metadata\CQRSGet;
             ],
         ),
     ],
+    normalizationContext: ['skip_null_values' => false],
 )]
 class ApiClient
 {
@@ -55,6 +56,8 @@ class ApiClient
     public string $clientName;
 
     public string $description;
+
+    public ?string $externalIssuer;
 
     public bool $enabled;
 

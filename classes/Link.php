@@ -45,6 +45,7 @@ class LinkCore
     protected $ssl_enable;
     protected $urlShopId = null;
 
+    // Categories that will not be used for URL rewriting
     protected static $category_disable_rewrite = null;
 
     /**
@@ -67,6 +68,7 @@ class LinkCore
             define('_PS_BASE_URL_SSL_', Tools::getShopDomainSsl(true));
         }
 
+        // Define categories that will not be used for URL rewriting
         if (Link::$category_disable_rewrite === null) {
             Link::$category_disable_rewrite = [
                 Configuration::get('PS_HOME_CATEGORY'),
@@ -175,6 +177,20 @@ class LinkCore
             $params['id'] = $product->id;
         }
 
+        // Preserve preview parameters if they exist in the current request and we're generating a link for the same product
+        if (isset($_GET['preview']) && $_GET['preview'] == '1' && !isset($extraParams['preview'])) {
+            $currentProductId = isset($_GET['id_product']) ? (int) $_GET['id_product'] : null;
+            if ($currentProductId && $currentProductId === (int) $params['id']) {
+                if (isset($_GET['adtoken'])) {
+                    $extraParams['adtoken'] = $_GET['adtoken'];
+                }
+                if (isset($_GET['id_employee'])) {
+                    $extraParams['id_employee'] = $_GET['id_employee'];
+                }
+                $extraParams['preview'] = '1';
+            }
+        }
+
         // Attribute equal to 0 or empty is useless, so we force it to null so that it won't be inserted in query parameters
         if (empty($idProductAttribute)) {
             $idProductAttribute = null;
@@ -229,9 +245,12 @@ class LinkCore
             $product = $this->getProductObject($product, $idLang, $idShop);
             $params['category'] = (!$category) ? $product->category : $category;
             $cats = [];
+            /*
+             * We will use all categories in the path of the default category,
+             * with two exceptions - the root category and the home category.
+             */
             foreach ($product->getParentCategories($idLang) as $cat) {
                 if (!in_array($cat['id_category'], Link::$category_disable_rewrite)) {
-                    // remove root and home category from the URL
                     $cats[] = $cat['link_rewrite'];
                 }
             }
@@ -457,6 +476,19 @@ class LinkCore
             $category = $this->getCategoryObject($category, $idLang);
             $params['meta_title'] = Tools::str2url($category->getFieldByLang('meta_title'));
         }
+        if ($dispatcher->hasKeyword($rule, $idLang, 'categories', $idShop)) {
+            $category = $this->getCategoryObject($category, $idLang);
+            $cats = [];
+            foreach (array_reverse($category->getParentsCategories($idLang)) as $cat) {
+                if ($cat['id_category'] == $category->id) {
+                    continue;
+                }
+                if (!in_array($cat['id_category'], Link::$category_disable_rewrite)) {
+                    $cats[] = $cat['link_rewrite'];
+                }
+            }
+            $params['categories'] = implode('/', $cats);
+        }
 
         return $url . Dispatcher::getInstance()->createUrl($rule, $idLang, $params, $this->allow, '', $idShop);
     }
@@ -648,8 +680,6 @@ class LinkCore
 
     /**
      * Create a link to a module.
-     *
-     * @since    1.5.0
      *
      * @param string $module Module name
      * @param string $controller
@@ -933,6 +963,22 @@ class LinkCore
         $type = ($type ? '-' . $type : '');
         $idImage = (string) $idImage;
 
+        $overrideUrl = Hook::exec(
+            'overrideImageLink',
+            [
+                'name' => $name,
+                'ids' => $idImage,
+                'type' => $type,
+                'extension' => $extension,
+            ],
+            null,
+            true
+        );
+
+        if (!empty($overrideUrl)) {
+            return $overrideUrl;
+        }
+
         // Default image like "fr-default"
         if (strpos($idImage, 'default') !== false) {
             $theme = ((Shop::isFeatureActive() && file_exists(_PS_PRODUCT_IMG_DIR_ . $idImage . $type . '-' . Context::getContext()->shop->theme_name . '.jpg')) ? '-' . Context::getContext()->shop->theme_name : '');
@@ -944,6 +990,7 @@ class LinkCore
             if (strpos($idImage, '-')) {
                 $idImage = explode('-', $idImage)[1];
                 if (_PS_MODE_DEV_) {
+                    // @deprecated
                     trigger_error(
                         'Passing image identifier in the old format is deprecated, use only image ID. This fallback will be removed in next major.',
                         E_USER_DEPRECATED
@@ -962,7 +1009,22 @@ class LinkCore
             }
         }
 
-        return $this->getMediaLink($uriPath);
+        $url = $this->getMediaLink($uriPath);
+
+        Hook::exec(
+            'adaptImageLink',
+            [
+                'protocol_content' => $this->protocol_content,
+                'uri_path' => $uriPath,
+                'url' => &$url,
+                'name' => $name,
+                'ids' => $idImage,
+                'type' => $type,
+                'extension' => $extension,
+            ]
+        );
+
+        return $url;
     }
 
     /**

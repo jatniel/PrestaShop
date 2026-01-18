@@ -857,6 +857,15 @@ class OrderCore extends ObjectModel
         WHERE ocr.`deleted` = 1 AND ocr.`id_order` = ' . (int) $this->id);
     }
 
+    /**
+     * Returns the number of times a cart rule has been used by a customer.
+     * Checks all orders of a given customer for a given cart rule.
+     *
+     * @param int $id_customer Customer ID
+     * @param int $id_cart_rule CartRule ID
+     *
+     * @return int Amount of cart rules used
+     */
     public static function getDiscountsCustomer($id_customer, $id_cart_rule)
     {
         $cache_id = 'Order::getDiscountsCustomer_' . (int) $id_customer . '-' . (int) $id_cart_rule;
@@ -900,6 +909,21 @@ class OrderCore extends ObjectModel
 
     public function hasBeenDelivered()
     {
+        $hasBeenDelivered = Hook::exec(
+            'actionOrderHasBeenDelivered',
+            ['order' => $this],
+            null,
+            false,
+            true,
+            false,
+            null,
+            true
+        );
+
+        if (is_bool($hasBeenDelivered)) {
+            return $hasBeenDelivered;
+        }
+
         return count($this->getHistory((int) $this->id_lang, false, false, OrderState::FLAG_DELIVERY));
     }
 
@@ -925,6 +949,21 @@ class OrderCore extends ObjectModel
 
     public function hasBeenShipped()
     {
+        $hasBeenShipped = Hook::exec(
+            'actionOrderHasBeenShipped',
+            ['order' => $this],
+            null,
+            false,
+            true,
+            false,
+            null,
+            true
+        );
+
+        if (is_bool($hasBeenShipped)) {
+            return $hasBeenShipped;
+        }
+
         return count($this->getHistory((int) $this->id_lang, false, false, OrderState::FLAG_SHIPPED));
     }
 
@@ -980,7 +1019,7 @@ class OrderCore extends ObjectModel
         WHERE o.`id_customer` = ' . (int) $id_customer .
             Shop::addSqlRestriction(Shop::SHARE_ORDER) . '
         GROUP BY o.`id_order`
-        ORDER BY o.`date_add` DESC');
+        ORDER BY o.`date_add` DESC, o.`id_order` ASC');
 
         if (!$res) {
             return [];
@@ -1150,14 +1189,13 @@ class OrderCore extends ObjectModel
             WHERE `id_cart` = ' . (int) $id_cart .
             Shop::addSqlRestriction();
 
-        $result = Db::getInstance()->getValue($sql);
+        // No cache to avoid getting a wrong result in clustered environments
+        $result = Db::getInstance()->getValue($sql, false);
 
         return !empty($result) ? (int) $result : false;
     }
 
     /**
-     * @since 1.5.0.1
-     *
      * @param int $id_cart_rule
      * @param string $name
      * @param array $values
@@ -1510,8 +1548,6 @@ class OrderCore extends ObjectModel
     /**
      * Get a collection of orders using reference.
      *
-     * @since 1.5.0.14
-     *
      * @param string $reference
      *
      * @return PrestaShopCollection Collection of Order
@@ -1670,8 +1706,6 @@ class OrderCore extends ObjectModel
     /**
      * This method return the ID of the previous order.
      *
-     * @since 1.5.0.1
-     *
      * @return int
      */
     public function getPreviousOrderId()
@@ -1686,8 +1720,6 @@ class OrderCore extends ObjectModel
 
     /**
      * This method return the ID of the next order.
-     *
-     * @since 1.5.0.1
      *
      * @return int
      */
@@ -1744,8 +1776,6 @@ class OrderCore extends ObjectModel
      * This method returns true if at least one order details uses the
      * One After Another tax computation method.
      *
-     * @since 1.5.0.1
-     *
      * @return bool
      */
     public function useOneAfterAnotherTaxComputationMethod()
@@ -1763,8 +1793,6 @@ class OrderCore extends ObjectModel
 
     /**
      * This method allows to get all Order Payment for the current order.
-     *
-     * @since 1.5.0.1
      *
      * @return PrestaShopCollection Collection of OrderPayment
      */
@@ -1788,8 +1816,6 @@ class OrderCore extends ObjectModel
 
     /**
      * This method allows to add a payment to the current order.
-     *
-     * @since 1.5.0.1
      *
      * @param string $amount_paid
      * @param string $payment_method
@@ -1888,8 +1914,6 @@ class OrderCore extends ObjectModel
      *
      * Get all documents linked to the current order
      *
-     * @since 1.5.0.1
-     *
      * @return array
      */
     public function getDocuments()
@@ -1947,8 +1971,6 @@ class OrderCore extends ObjectModel
     /**
      * Get all order_slips for the current order.
      *
-     * @since 1.5.0.2
-     *
      * @return PrestaShopCollection Collection of OrderSlip
      */
     public function getOrderSlipsCollection()
@@ -1961,8 +1983,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Get all invoices for the current order.
-     *
-     * @since 1.5.0.1
      *
      * @return PrestaShopCollection Collection of OrderInvoice
      */
@@ -1977,8 +1997,6 @@ class OrderCore extends ObjectModel
     /**
      * Get all delivery slips for the current order.
      *
-     * @since 1.5.0.2
-     *
      * @return PrestaShopCollection Collection of OrderInvoice
      */
     public function getDeliverySlipsCollection()
@@ -1992,8 +2010,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Get all not paid invoices for the current order.
-     *
-     * @since 1.5.0.2
      *
      * @return PrestaShopCollection Collection of Order invoice not paid
      */
@@ -2012,8 +2028,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Get total paid.
-     *
-     * @since 1.5.0.1
      *
      * @param Currency $currency currency used for the total paid of the current order
      *
@@ -2048,8 +2062,6 @@ class OrderCore extends ObjectModel
     /**
      * Get the sum of total_paid_tax_incl of the orders with similar reference.
      *
-     * @since 1.5.0.1
-     *
      * @return float
      */
     public function getOrdersTotalPaid()
@@ -2064,8 +2076,6 @@ class OrderCore extends ObjectModel
 
     /**
      * This method allows to change the shipping cost of the current order.
-     *
-     * @since 1.5.0.1
      *
      * @param float $amount
      *
@@ -2090,8 +2100,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Returns the correct product taxes breakdown.
-     *
-     * @since 1.5.0.1
      *
      * @return array
      */
@@ -2148,8 +2156,6 @@ class OrderCore extends ObjectModel
     /**
      * Returns the shipping taxes breakdown.
      *
-     * @since 1.5.0.1
-     *
      * @return array
      */
     public function getShippingTaxesBreakdown()
@@ -2173,8 +2179,6 @@ class OrderCore extends ObjectModel
      *
      * @todo
      *
-     * @since 1.5.0.1
-     *
      * @return array
      */
     public function getWrappingTaxesBreakdown()
@@ -2186,8 +2190,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Returns the ecotax taxes breakdown.
-     *
-     * @since 1.5.0.1
      *
      * @return array
      */
@@ -2260,8 +2262,6 @@ class OrderCore extends ObjectModel
     }
 
     /**
-     * @since 1.5.0.4
-     *
      * @return OrderState|null null if Order haven't a state
      */
     public function getCurrentOrderState()
@@ -2285,8 +2285,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Get all other orders with the same reference.
-     *
-     * @since 1.5.0.13
      */
     public function getBrother()
     {
@@ -2300,8 +2298,6 @@ class OrderCore extends ObjectModel
 
     /**
      * Get a collection of order payments.
-     *
-     * @since 1.5.0.13
      */
     public function getOrderPayments()
     {
@@ -2313,8 +2309,6 @@ class OrderCore extends ObjectModel
      *
      * With multishipping, order reference are the same for all orders made with the same cart
      * in this case this method suffix the order reference by a # and the order number
-     *
-     * @since 1.5.0.14
      */
     public function getUniqReference()
     {
@@ -2337,8 +2331,6 @@ class OrderCore extends ObjectModel
      *
      * With multishipping, order reference are the same for all orders made with the same cart
      * in this case this method suffix the order reference by a # and the order number
-     *
-     * @since 1.5.0.14
      */
     public static function getUniqReferenceOf($id_order)
     {
@@ -2351,8 +2343,6 @@ class OrderCore extends ObjectModel
      * Return id of carrier.
      *
      * Get id of the carrier used in order
-     *
-     * @since 1.5.5.0
      */
     public function getIdOrderCarrier()
     {

@@ -1,21 +1,11 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import webservices
+import getCountryXml from '@data/xml/country';
+import {addWebserviceKey, removeWebserviceKey, setWebserviceStatus} from '@commonTests/BO/advancedParameters/ws';
 import countryXml from '@webservices/country/countryXml';
 import CountryWS from '@webservices/country/countryWs';
 
-// Import commonTests
-import {addWebserviceKey, removeWebserviceKey, setWebserviceStatus} from '@commonTests/BO/advancedParameters/ws';
-
-// Import BO pages
-import webservicePage from '@pages/BO/advancedParameters/webservice';
-import zonesPage from '@pages/BO/international/locations';
-
-// Import data
-import getCountryXml from '@data/xml/country';
-
-import {expect} from 'chai';
 import {
   type APIRequestContext,
   type APIResponse,
@@ -23,6 +13,8 @@ import {
   boCountriesCreatePage,
   boDashboardPage,
   boLoginPage,
+  boWebservicesPage,
+  boZonesPage,
   type BrowserContext,
   type Page,
   utilsPlaywright,
@@ -88,27 +80,27 @@ describe('WS - Countries : CRUD', async () => {
           boDashboardPage.advancedParametersLink,
           boDashboardPage.webserviceLink,
         );
-        await webservicePage.closeSfToolBar(page);
+        await boWebservicesPage.closeSfToolBar(page);
 
-        const pageTitle = await webservicePage.getPageTitle(page);
-        expect(pageTitle).to.contains(webservicePage.pageTitle);
+        const pageTitle = await boWebservicesPage.getPageTitle(page);
+        expect(pageTitle).to.contains(boWebservicesPage.pageTitle);
       });
 
       it('should filter list by key description', async function () {
         await testContext.addContextItem(this, 'testIdentifier', 'filterBeforeDelete', baseContext);
 
-        await webservicePage.resetAndGetNumberOfLines(page);
-        await webservicePage.filterWebserviceTable(
+        await boWebservicesPage.resetAndGetNumberOfLines(page);
+        await boWebservicesPage.filterWebserviceTable(
           page,
           'input',
           'description',
           wsKeyDescription,
         );
 
-        const description = await webservicePage.getTextColumnFromTable(page, 1, 'description');
+        const description = await boWebservicesPage.getTextColumnFromTable(page, 1, 'description');
         expect(description).to.contains(wsKeyDescription);
 
-        wsKey = await webservicePage.getTextColumnFromTable(page, 1, 'key');
+        wsKey = await boWebservicesPage.getTextColumnFromTable(page, 1, 'key');
         authorization = `Basic ${Buffer.from(`${wsKey}:`).toString('base64')}`;
         expect(wsKey).to.not.have.lengthOf(0);
       });
@@ -427,16 +419,16 @@ describe('WS - Countries : CRUD', async () => {
             boDashboardPage.internationalParentLink,
             boDashboardPage.locationsLink,
           );
-          await zonesPage.closeSfToolBar(page);
+          await boZonesPage.closeSfToolBar(page);
 
-          const pageTitle = await zonesPage.getPageTitle(page);
-          expect(pageTitle).to.contains(zonesPage.pageTitle);
+          const pageTitle = await boZonesPage.getPageTitle(page);
+          expect(pageTitle).to.contains(boZonesPage.pageTitle);
         });
 
         it('should go to \'Countries\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToCountriesPagePost', baseContext);
 
-          await zonesPage.goToSubTabCountries(page);
+          await boZonesPage.goToSubTabCountries(page);
 
           const pageTitle = await boCountriesPage.getPageTitle(page);
           expect(pageTitle).to.contains(boCountriesPage.pageTitle);
@@ -559,7 +551,7 @@ describe('WS - Countries : CRUD', async () => {
         it('should go to \'Countries\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToCountriesPagePostReset', baseContext);
 
-          await zonesPage.goToSubTabCountries(page);
+          await boZonesPage.goToSubTabCountries(page);
 
           const pageTitle = await boCountriesPage.getPageTitle(page);
           expect(pageTitle).to.contains(boCountriesPage.pageTitle);
@@ -821,7 +813,7 @@ describe('WS - Countries : CRUD', async () => {
         it('should go to \'Countries\' page', async function () {
           await testContext.addContextItem(this, 'testIdentifier', 'goToCountriesPagePutReset', baseContext);
 
-          await zonesPage.goToSubTabCountries(page);
+          await boZonesPage.goToSubTabCountries(page);
 
           const pageTitle = await boCountriesPage.getPageTitle(page);
           expect(pageTitle).to.contains(boCountriesPage.pageTitle);

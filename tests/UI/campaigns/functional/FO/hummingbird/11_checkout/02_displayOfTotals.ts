@@ -1,12 +1,8 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 import {createCartRuleTest, deleteCartRuleTest} from '@commonTests/BO/catalog/cartRule';
-
-// Import FO pages
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
 
 import {
   type BrowserContext,
@@ -18,14 +14,13 @@ import {
   foHummingbirdCheckoutPage,
   foHummingbirdHomePage,
   foHummingbirdLoginPage,
+  foHummingbirdModalBlockCartPage,
   foHummingbirdModalQuickViewPage,
   foHummingbirdSearchResultsPage,
   type Page,
   utilsDate,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
 
 const baseContext: string = 'functional_FO_hummingbird_checkout_displayOfTotals';
 
@@ -44,7 +39,7 @@ Post-condition:
 - Delete created cart rule
  */
 
-describe('FO - Checkout : Display of totals', async () => {
+describe('FO - Checkout : Display of total (price, vouchers, shipping)', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   const pastDate: string = utilsDate.getDateFormat('yyyy-mm-dd', 'past');
@@ -64,6 +59,7 @@ describe('FO - Checkout : Display of totals', async () => {
       tax: 'Tax included',
     },
   });
+  const cartRuleWithCodeDiscountValue:number = parseFloat(cartRuleWithCodeData.discountAmount!.value.toString());
 
   // Pre-condition: Create cart rule with code
   createCartRuleTest(cartRuleWithCodeData, `${baseContext}_preTest_1`);
@@ -124,7 +120,7 @@ describe('FO - Checkout : Display of totals', async () => {
       await foHummingbirdSearchResultsPage.quickViewProduct(page, 1);
 
       await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
       const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
       expect(pageTitle).to.equal(foHummingbirdCartPage.pageTitle);
@@ -149,13 +145,13 @@ describe('FO - Checkout : Display of totals', async () => {
     it('should verify the total after the discount', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkTotalAfterDiscount3', baseContext);
 
-      const totalAfterPromoCode: number = dataProducts.demo_12.finalPrice - cartRuleWithCodeData.discountAmount!.value;
+      const totalAfterPromoCode: number = dataProducts.demo_12.finalPrice - cartRuleWithCodeDiscountValue;
 
       const priceATI = await foHummingbirdCartPage.getATIPrice(page);
       expect(priceATI).to.equal(parseFloat(totalAfterPromoCode.toFixed(2)));
 
-      const discountValue = await foHummingbirdCartPage.getDiscountValue(page, 1);
-      expect(discountValue).to.equal(-cartRuleWithCodeData.discountAmount!.value);
+      const discountValue = await foHummingbirdCartPage.getCartRuleValue(page, 1);
+      expect(discountValue).to.equal(`-€${cartRuleWithCodeDiscountValue.toFixed(2)}`);
     });
 
     it('should validate shopping cart and go to checkout page', async function () {
@@ -197,7 +193,7 @@ describe('FO - Checkout : Display of totals', async () => {
       const totalAfterDiscount = await foHummingbirdCheckoutPage.getATIPrice(page);
       expect(totalAfterDiscount.toFixed(2))
         .to.equal(
-          (dataProducts.demo_12.price - cartRuleWithCodeData.discountAmount!.value + dataCarriers.myCarrier.priceTTC).toFixed(2),
+          (dataProducts.demo_12.price - cartRuleWithCodeDiscountValue + dataCarriers.myCarrier.priceTTC).toFixed(2),
         );
     });
 

@@ -1,14 +1,11 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import FO pages
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-
 import {expect} from 'chai';
+
 import {
   type BrowserContext,
   foClassicCartPage,
   foClassicHomePage,
+  foClassicModalBlockCartPage,
   foClassicModalQuickViewPage,
   type Page,
   utilsPlaywright,
@@ -16,7 +13,7 @@ import {
 
 const baseContext: string = 'functional_FO_classic_cart_cart_changeQuantity';
 
-describe('FO - cart : Change quantity', async () => {
+describe('FO - Cart : Change quantity', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -44,7 +41,7 @@ describe('FO - cart : Change quantity', async () => {
 
     await foClassicHomePage.quickViewProduct(page, 1);
     await foClassicModalQuickViewPage.addToCartByQuickView(page);
-    await blockCartModal.proceedToCheckout(page);
+    await foClassicModalBlockCartPage.proceedToCheckout(page);
 
     const pageTitle = await foClassicCartPage.getPageTitle(page);
     expect(pageTitle).to.eq(foClassicCartPage.pageTitle);
@@ -128,7 +125,7 @@ describe('FO - cart : Change quantity', async () => {
     await testContext.addContextItem(this, 'testIdentifier', 'checkErrorMessage', baseContext);
 
     const alertText = await foClassicCartPage.getNotificationMessage(page);
-    expect(alertText).to.contains(foClassicCartPage.errorNotificationForProductQuantity);
+    expect(alertText).to.contains(foClassicCartPage.errorNotificationForProductQuantity(300));
   });
 
   it('should check that proceed to checkout button is disabled', async function () {

@@ -85,6 +85,7 @@ services:
 
   prestashop.adapter.general.configuration:
     class: 'PrestaShop\PrestaShop\Adapter\GeneralConfiguration'
+    autowire: true
     arguments:
       - '@prestashop.adapter.legacy.configuration'
       - '@=service("prestashop.adapter.legacy.context").getContext().cookie'
@@ -118,6 +119,9 @@ services:
       - '@prestashop.adapter.legacy.configuration'
       - '@translator'
       - '@prestashop.adapter.validate'
+
+  PrestaShop\PrestaShop\Adapter\Configuration\DatabaseLogsConfiguration:
+    autowire: true
 
   prestashop.adapter.order.delivery.slip.options.configuration:
     class: 'PrestaShop\PrestaShop\Adapter\Order\Delivery\SlipOptionsConfiguration'

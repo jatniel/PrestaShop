@@ -27,6 +27,7 @@
 use PrestaShop\PrestaShop\Core\Domain\Category\CategorySettings;
 use PrestaShop\PrestaShop\Core\Domain\Category\SeoSettings;
 use PrestaShop\PrestaShop\Core\Domain\Category\ValueObject\RedirectType;
+use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\RedirectType as ProductRedirectType;
 
 /**
  * Class CategoryCore.
@@ -362,7 +363,7 @@ class CategoryCore extends ObjectModel
     protected function recursiveDelete(array &$toDelete, $idCategory)
     {
         if (!$idCategory) {
-            die(Tools::displayError('Parameter "idCategory" is invalid.'));
+            throw new PrestaShopException('Parameter "idCategory" is invalid.');
         }
 
         $sql = new DbQuery();
@@ -411,6 +412,7 @@ class CategoryCore extends ObjectModel
         $allCat[] = $this;
         foreach ($allCat as $cat) {
             $cat->deleteLite();
+            $cat->deleteRedirections();
             if (!$cat->hasMultishopEntries()) {
                 $cat->deleteImage();
                 $cat->cleanGroups();
@@ -433,6 +435,34 @@ class CategoryCore extends ObjectModel
         Hook::exec('actionCategoryDelete', ['category' => $this, 'deleted_children' => $deletedChildren]);
 
         return true;
+    }
+
+    /**
+     * Resets all entries where this category was used as a redirection target
+     *
+     * @return bool
+     */
+    public function deleteRedirections(): bool
+    {
+        $productTableUpdateResult = Db::getInstance()->update(
+            'product',
+            ['redirect_type' => ProductRedirectType::TYPE_DEFAULT, 'id_type_redirected' => 0],
+            '(redirect_type = \'' . ProductRedirectType::TYPE_CATEGORY_TEMPORARY . '\' OR redirect_type = \'' . ProductRedirectType::TYPE_CATEGORY_PERMANENT . '\') AND id_type_redirected = ' . (int) $this->id
+        );
+
+        $productShopTableUpdateResult = Db::getInstance()->update(
+            'product_shop',
+            ['redirect_type' => ProductRedirectType::TYPE_DEFAULT, 'id_type_redirected' => 0],
+            '(redirect_type = \'' . ProductRedirectType::TYPE_CATEGORY_TEMPORARY . '\' OR redirect_type = \'' . ProductRedirectType::TYPE_CATEGORY_PERMANENT . '\') AND id_type_redirected = ' . (int) $this->id
+        );
+
+        $categoryTableUpdateResult = Db::getInstance()->update(
+            'category',
+            ['redirect_type' => RedirectType::TYPE_PERMANENT, 'id_type_redirected' => 0],
+            '(redirect_type = \'' . RedirectType::TYPE_TEMPORARY . '\' OR redirect_type = \'' . RedirectType::TYPE_PERMANENT . '\') AND id_type_redirected = ' . (int) $this->id
+        );
+
+        return $productTableUpdateResult && $productShopTableUpdateResult && $categoryTableUpdateResult;
     }
 
     /**
@@ -692,7 +722,7 @@ class CategoryCore extends ObjectModel
         $limit = ''
     ) {
         if (isset($idRootCategory) && !Validate::isInt($idRootCategory)) {
-            die(Tools::displayError('Parameter "idRootCategory" was provided, but it\'s not a valid integer.'));
+            throw new PrestaShopException('Parameter "idRootCategory" was provided, but it\'s not a valid integer.');
         }
 
         if (isset($groups) && Group::isFeatureActive() && !is_array($groups)) {
@@ -763,7 +793,7 @@ class CategoryCore extends ObjectModel
         $limit = ''
     ) {
         if (isset($idRootCategory) && !Validate::isInt($idRootCategory)) {
-            die(Tools::displayError('Parameter "idRootCategory" was provided, but it\'s not a valid integer.'));
+            throw new PrestaShopException('Parameter "idRootCategory" was provided, but it\'s not a valid integer.');
         }
 
         if (isset($groups) && Group::isFeatureActive() && !is_array($groups)) {
@@ -1025,7 +1055,7 @@ class CategoryCore extends ObjectModel
 					pl.`available_later`, pl.`link_rewrite`, pl.`meta_description`, pl.`meta_title`, pl.`name`, image_shop.`id_image` id_image,
 					il.`legend` as legend, m.`name` AS manufacturer_name, cl.`name` AS category_default,
 					DATEDIFF(product_shop.`date_add`, DATE_SUB("' . date('Y-m-d') . ' 00:00:00",
-					INTERVAL ' . (int) $nbDaysNewProduct . ' DAY)) > 0 AS new, product_shop.price AS orderprice
+					INTERVAL ' . (int) $nbDaysNewProduct . ' DAY)) > 0 AS new, product_shop.price AS orderprice, psales.`quantity` as sales
 				FROM `' . _DB_PREFIX_ . 'category_product` cp
 				LEFT JOIN `' . _DB_PREFIX_ . 'product` p
 					ON p.`id_product` = cp.`id_product`
@@ -1046,6 +1076,8 @@ class CategoryCore extends ObjectModel
 					AND il.`id_lang` = ' . (int) $idLang . ')
 				LEFT JOIN `' . _DB_PREFIX_ . 'manufacturer` m
 					ON m.`id_manufacturer` = p.`id_manufacturer`
+                LEFT JOIN `' . _DB_PREFIX_ . 'product_sale` psales
+					ON psales.`id_product` = p.`id_product`
 				WHERE product_shop.`id_shop` = ' . (int) $context->shop->id . '
 					AND cp.`id_category` = ' . (int) $this->id
                     . ($active ? ' AND product_shop.`active` = 1' : '')
@@ -1546,7 +1578,7 @@ class CategoryCore extends ObjectModel
         if (!$context->shop->id) {
             $context->shop = new Shop((int) Configuration::get('PS_SHOP_DEFAULT'));
         }
-        if (count(Category::getCategoriesWithoutParent()) > 1) {
+        if (Shop::getContext() !== Shop::CONTEXT_SHOP && count(Category::getCategoriesWithoutParent()) > 1) {
             $context->shop->id_category = (int) Configuration::get('PS_ROOT_CATEGORY');
         }
         $idShop = $context->shop->id;
@@ -1891,26 +1923,32 @@ class CategoryCore extends ObjectModel
     }
 
     /**
-     * Returns the number of categories + 1 having $idCategoryParent as parent.
+     * Returns the next position to assign to a new category.
+     * Category positions start at 0.
      *
-     * @param int $idCategoryParent The parent category
+     * Since this method is called *after* the category has already been created
+     * (with position 0 by default), using MAX(position) alone would always return 1,
+     * even for the very first category.
+     *
+     * Therefore, we check how many categories already exist under the same parent.
+     * - If there's only one (i.e., the newly created one), we return 0.
+     * - If there are two or more, we return MAX(position) + 1.
+     *
+     * @param int $idCategoryParent ID of the parent category
      * @param int $idShop Shop ID
      *
-     * @return int Number of categories + 1 having $idCategoryParent as parent
-     *
-     * @todo     rename that function to make it understandable (getNextPosition for example)
+     * @return int Position to use
      */
     public static function getLastPosition($idCategoryParent, $idShop)
     {
-        // @TODO, if we remove this query, the position will begin at 1 instead of 0, but is this really a problem?
-        $results = Db::getInstance()->executeS('
+        $childrenCount = Db::getInstance()->executeS('
 				SELECT 1
 				FROM `' . _DB_PREFIX_ . 'category` c
 				 JOIN `' . _DB_PREFIX_ . 'category_shop` cs
 				ON (c.`id_category` = cs.`id_category` AND cs.`id_shop` = ' . (int) $idShop . ')
 				WHERE c.`id_parent` = ' . (int) $idCategoryParent . ' LIMIT 2');
 
-        if (count($results) === 1) {
+        if (count($childrenCount) === 1) {
             return 0;
         } else {
             $maxPosition = (int) Db::getInstance()->getValue('
@@ -1930,8 +1968,6 @@ class CategoryCore extends ObjectModel
      * @param int $id
      *
      * @return array
-     *
-     * @since 1.5.0
      */
     public static function getInterval($id)
     {
@@ -1956,8 +1992,6 @@ class CategoryCore extends ObjectModel
      * @param Shop $shop
      *
      * @return bool
-     *
-     * @since 1.5.0
      */
     public function inShop(?Shop $shop = null)
     {
@@ -1965,7 +1999,8 @@ class CategoryCore extends ObjectModel
             $shop = Context::getContext()->shop;
         }
 
-        if (!$interval = Category::getInterval($shop->getCategory())) {
+        // Verify we got the interval of shop category
+        if (empty($interval = Category::getInterval($shop->getCategory()))) {
             return false;
         }
 
@@ -1979,8 +2014,6 @@ class CategoryCore extends ObjectModel
      * @param Shop $shop Shop object
      *
      * @return bool Indicates whether the current category is a child of the Shop root category
-     *
-     * @since 1.5.0
      */
     public static function inShopStatic($idCategory, ?Shop $shop = null)
     {
@@ -1988,14 +2021,21 @@ class CategoryCore extends ObjectModel
             $shop = Context::getContext()->shop;
         }
 
-        if (!$interval = Category::getInterval($shop->getCategory())) {
+        // Verify we got the interval of shop category
+        if (empty($interval = Category::getInterval($shop->getCategory()))) {
             return false;
         }
+
         $sql = new DbQuery();
         $sql->select('c.`nleft`, c.`nright`');
         $sql->from('category', 'c');
         $sql->where('c.`id_category` = ' . (int) $idCategory);
         $row = Db::getInstance(_PS_USE_SQL_SLAVE_)->getRow($sql);
+
+        // If it doesn't exist, we can end up right here
+        if (empty($row)) {
+            return false;
+        }
 
         return $row['nleft'] >= $interval['nleft'] && $row['nright'] <= $interval['nright'];
     }
@@ -2099,8 +2139,6 @@ class CategoryCore extends ObjectModel
      *
      * @return array|false Array with Category information
      *                     `false` if no Category found
-     *
-     * @since 1.7.0
      */
     public static function getCategoryInformation($idsCategory, $idLang = null)
     {

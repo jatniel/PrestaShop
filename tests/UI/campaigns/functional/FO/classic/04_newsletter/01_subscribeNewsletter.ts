@@ -1,15 +1,10 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-// Import BO pages
-import {moduleConfigurationPage} from '@pages/BO/modules/moduleConfiguration';
-// Import FO pages
-import {accountIdentityPage} from '@pages/FO/classic/myAccount/identity';
+import {expect} from 'chai';
 
 import {
   boDashboardPage,
   boLoginPage,
+  boModuleConfigurationPage,
   boModuleManagerPage,
   type BrowserContext,
   dataCustomers,
@@ -17,14 +12,12 @@ import {
   foClassicHomePage,
   foClassicLoginPage,
   foClassicMyAccountPage,
+  foClassicMyInformationsPage,
   modPsEmailSubscriptionBoMain,
   type Page,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
 
-import {expect} from 'chai';
-
-// context
 const baseContext: string = 'functional_FO_classic_newsletter_subscribeNewsletter';
 
 /*
@@ -98,15 +91,15 @@ describe('FO - Newsletter : Subscribe to Newsletter', async () => {
       await foClassicHomePage.goToMyAccountPage(page);
       await foClassicMyAccountPage.goToInformationPage(page);
 
-      const pageTitle = await accountIdentityPage.getPageTitle(page);
-      expect(pageTitle).to.equal(accountIdentityPage.pageTitle);
+      const pageTitle = await foClassicMyInformationsPage.getPageTitle(page);
+      expect(pageTitle).to.equal(foClassicMyInformationsPage.pageTitle);
     });
 
     it('should unsubscribe from newsletter', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'unsubscribeFromNewsLetter', baseContext);
 
-      const unsubscribeAlertText = await accountIdentityPage.unsubscribeNewsletter(page, dataCustomers.johnDoe.password);
-      expect(unsubscribeAlertText).to.contains(accountIdentityPage.successfulUpdateMessage);
+      const unsubscribeAlertText = await foClassicMyInformationsPage.unsubscribeNewsletter(page, dataCustomers.johnDoe.password);
+      expect(unsubscribeAlertText).to.contains(foClassicMyInformationsPage.successfulUpdateMessage);
     });
   });
 
@@ -148,8 +141,8 @@ describe('FO - Newsletter : Subscribe to Newsletter', async () => {
       await boModuleManagerPage.searchModule(page, moduleInformation);
       await boModuleManagerPage.goToConfigurationPage(page, moduleInformation.tag);
 
-      const moduleConfigurationPageSubtitle = await moduleConfigurationPage.getPageSubtitle(page);
-      expect(moduleConfigurationPageSubtitle).to.contains(moduleInformation.name);
+      const boModuleConfigurationPageSubtitle = await boModuleConfigurationPage.getPageSubtitle(page);
+      expect(boModuleConfigurationPageSubtitle).to.contains(moduleInformation.name);
     });
 
     it('should check if user is unsubscribed from newsletter', async function () {
@@ -218,8 +211,8 @@ describe('FO - Newsletter : Subscribe to Newsletter', async () => {
       await boModuleManagerPage.searchModule(page, moduleInformation);
       await boModuleManagerPage.goToConfigurationPage(page, moduleInformation.tag);
 
-      const moduleConfigurationPageSubtitle = await moduleConfigurationPage.getPageSubtitle(page);
-      expect(moduleConfigurationPageSubtitle).to.contains(moduleInformation.name);
+      const boModuleConfigurationPageSubtitle = await boModuleConfigurationPage.getPageSubtitle(page);
+      expect(boModuleConfigurationPageSubtitle).to.contains(moduleInformation.name);
     });
 
     it('should check if previous customer subscription is visible in table', async function () {

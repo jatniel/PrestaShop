@@ -13,7 +13,7 @@ import {
 
 const baseContext: string = 'functional_FO_classic_menuAndNavigation_navigateInCategories_breadcrumb';
 
-describe('FO - Menu and Navigation : Breadcrumb', async () => {
+describe('FO - Menu and Navigation - Navigate in Categories : Breadcrumb', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -87,7 +87,7 @@ describe('FO - Menu and Navigation : Breadcrumb', async () => {
   it('should click on Home link from the breadcrumb', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'clickOnHomeLink', baseContext);
 
-    await foClassicCategoryPage.clickOnBreadCrumbLink(page, 'en');
+    await foClassicCategoryPage.clickOnBreadCrumbLink(page, '/');
 
     const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage).to.eq(true);
@@ -128,7 +128,7 @@ describe('FO - Menu and Navigation : Breadcrumb', async () => {
   it('should click on Home link from the breadcrumb', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'clickOnHomeLink2', baseContext);
 
-    await foClassicCategoryPage.clickOnBreadCrumbLink(page, 'en');
+    await foClassicCategoryPage.clickOnBreadCrumbLink(page, '/');
 
     const isHomePage = await foClassicHomePage.isHomePage(page);
     expect(isHomePage).to.eq(true);

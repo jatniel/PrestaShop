@@ -36,7 +36,7 @@ use PrestaShop\PrestaShop\Core\Form\IdentifiableObject\CommandBuilder\Product\Vi
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Tests\Resources\DummyFileUploader;
 
-class VirtualProductFileCommandsBuilderTest extends AbstractProductCommandBuilderTest
+class VirtualProductFileCommandsBuilderTest extends AbstractProductCommandBuilderTestCase
 {
     /**
      * @dataProvider getExpectedCommands
@@ -81,6 +81,30 @@ class VirtualProductFileCommandsBuilderTest extends AbstractProductCommandBuilde
                         'virtual_product_file_id' => '0',
                         'file' => $dummyFile,
                         'name' => 'The file',
+                    ],
+                ],
+            ],
+            [$command],
+        ];
+
+        $command = new AddVirtualProductFileCommand(
+            $this->getProductId()->getValue(),
+            $dummyFile->getPathname(),
+            'The file',
+            1,
+            5
+        );
+        yield [
+            [
+                'stock' => [
+                    'virtual_product_file' => [
+                        'has_file' => true,
+                        'virtual_product_file_id' => null,
+                        'file' => $dummyFile,
+                        'name' => 'The file',
+                        'access_days_limit' => 1,
+                        'download_times_limit' => 5,
+                        'expiration_date' => null,
                     ],
                 ],
             ],

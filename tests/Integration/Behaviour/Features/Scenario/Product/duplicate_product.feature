@@ -15,9 +15,9 @@ Feature: Duplicate product from Back Office (BO).
     And language with iso code "en" is the default one
     And language "language2" with locale "fr-FR" exists
     And I create carrier "carrier1" with specified properties:
-      | name        | ecoCarrier |
+      | name | ecoCarrier |
     And I create carrier "carrier2" with specified properties:
-      | name        | Fast carry |
+      | name | Fast carry |
     And attribute group "Color" named "Color" in en language exists
     And attribute "Red" named "Red" in en language exists
     And attribute "Blue" named "Blue" in en language exists
@@ -125,9 +125,9 @@ Feature: Duplicate product from Back Office (BO).
       | en-US  | Its so smart |
       | fr-FR  | lel joke     |
     And product "productWithFieldsCopy" localized "link_rewrite" should be:
-      | locale | value              |
-      | en-US  | smart-sunglasses   |
-      | fr-FR  | lunettes-de-soleil |
+      | locale | value                       |
+      | en-US  | copy-of-smart-sunglasses    |
+      | fr-FR  | copie-de-lunettes-de-soleil |
     And product productWithFieldsCopy should have following seo options:
       | redirect_type   | 301-product           |
       | redirect_target | productForRedirection |
@@ -160,8 +160,8 @@ Feature: Duplicate product from Back Office (BO).
       | location | dtc |
     And product "productWithStock" last stock movements should be:
       | employee   | delta_quantity |
-      | Puff Daddy | -9             |
-      | Puff Daddy | 51             |
+      | Puffin Mummy | -9             |
+      | Puffin Mummy | 51             |
     And product "productWithStock" last stock movement decreased by 9
     When I duplicate product productWithStock to a productWithStockCopy
     Then product "productWithStockCopy" should have following stock information:
@@ -169,7 +169,7 @@ Feature: Duplicate product from Back Office (BO).
       | location | dtc |
     And product "productWithStockCopy" last stock movements should be:
       | employee   | delta_quantity |
-      | Puff Daddy | 42             |
+      | Puffin Mummy | 42             |
 
   Scenario: I duplicate a product with combinations their stock are copied
     When I add product "productWithCombinationAndStock" with following information:
@@ -209,7 +209,7 @@ Feature: Duplicate product from Back Office (BO).
       | available date             |             |
     And combination "productWithCombinationsRedCopy" last stock movements should be:
       | employee   | delta_quantity |
-      | Puff Daddy | 60             |
+      | Puffin Mummy | 60             |
     And combination "productWithCombinationsBlueCopy" should have following stock details:
       | combination stock detail   | value       |
       | quantity                   | 70          |
@@ -220,7 +220,7 @@ Feature: Duplicate product from Back Office (BO).
       | available date             |             |
     And combination "productWithCombinationsBlueCopy" last stock movements should be:
       | employee   | delta_quantity |
-      | Puff Daddy | 70             |
+      | Puffin Mummy | 70             |
 
   Scenario: I duplicate a product all its categories are correctly copied
     Given category "home" in default language named "Home" exists

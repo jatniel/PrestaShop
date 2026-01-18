@@ -38,6 +38,7 @@ use PrestaShop\PrestaShop\Core\Security\PasswordGenerator;
 use PrestaShop\PrestaShop\Core\Util\String\StringModifier;
 use PrestaShopBundle\Security\Admin\UserTokenManager;
 use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\HttpFoundation\IpUtils;
 use Symfony\Component\HttpFoundation\Request;
 
 class ToolsCore
@@ -204,6 +205,13 @@ class ToolsCore
         $link = Context::getContext()->link;
         if (!preg_match('@^https?://@i', $url) && $link) {
             $baseUrl = rtrim($link->getAdminBaseLink(), '/');
+
+            // Removes physical_uri from baseUrl to avoid duplicate admin path
+            $physicalUri = Context::getContext()->shop->physical_uri;
+            if (str_starts_with($url, $physicalUri)) {
+                $url = substr($url, strlen($physicalUri));
+            }
+
             if (!str_contains($url, basename(_PS_ADMIN_DIR_))) {
                 $baseUrl .= '/' . basename(_PS_ADMIN_DIR_);
             }
@@ -257,7 +265,7 @@ class ToolsCore
             $httpHost = $_SERVER['HTTP_HOST'];
         }
 
-        $host = (isset($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : $httpHost);
+        $host = (!empty($_SERVER['HTTP_X_FORWARDED_HOST']) ? $_SERVER['HTTP_X_FORWARDED_HOST'] : $httpHost);
         if ($ignore_port && $pos = strpos($host, ':')) {
             $host = substr($host, 0, $pos);
         }
@@ -325,7 +333,7 @@ class ToolsCore
      */
     public static function getServerName()
     {
-        if (isset($_SERVER['HTTP_X_FORWARDED_SERVER']) && $_SERVER['HTTP_X_FORWARDED_SERVER']) {
+        if (!empty($_SERVER['HTTP_X_FORWARDED_SERVER'])) {
             return $_SERVER['HTTP_X_FORWARDED_SERVER'];
         }
 
@@ -349,7 +357,7 @@ class ToolsCore
             $_SERVER['HTTP_X_FORWARDED_FOR'] = $headers['X-Forwarded-For'];
         }
 
-        if (isset($_SERVER['HTTP_X_FORWARDED_FOR']) && $_SERVER['HTTP_X_FORWARDED_FOR'] && (!isset($_SERVER['REMOTE_ADDR'])
+        if (!empty($_SERVER['HTTP_X_FORWARDED_FOR']) && (!isset($_SERVER['REMOTE_ADDR'])
             || preg_match('/^127\..*/i', trim($_SERVER['REMOTE_ADDR'])) || preg_match('/^172\.(1[6-9]|2\d|30|31)\..*/i', trim($_SERVER['REMOTE_ADDR']))
             || preg_match('/^192\.168\.*/i', trim($_SERVER['REMOTE_ADDR'])) || preg_match('/^10\..*/i', trim($_SERVER['REMOTE_ADDR'])))) {
             if (strpos($_SERVER['HTTP_X_FORWARDED_FOR'], ',')) {
@@ -528,7 +536,10 @@ class ToolsCore
     }
 
     /**
-     * Change language in cookie while clicking on a flag.
+     * This method was named "Change language in cookie while clicking on a flag.",
+     * but as of 25.12.2025, it does not really work at all. Language detection will
+     * never work because the language is exclusively determined by the URL, the isolang
+     * is always set and the HTTP_ACCEPT_LANGUAGE is not parsed properly anyway.
      *
      * @return string iso code
      */
@@ -584,7 +595,17 @@ class ToolsCore
     }
 
     /**
-     * If necessary change cookie language ID and context language.
+     * Detects proper id_language by the isolang parameter in the request and assigns
+     * it to the context and cookie. The method naming is a bit confusing as it does
+     * not switch anything. Language is exclusively determined by the URL.
+     *
+     * @todo - The behavior is a bit non stable, it should probably throw exceptions
+     * or somehow notify that nonsense is being present. If you for example pass a non
+     * existent language in the URL and you get "zz" in isolang, you will end up with:
+     * $_GET['isolang'] = zz
+     * $_GET['id_lang'] = null
+     * $context->cookie->id_lang = default language id from config.inc.php
+     * $context->language = default language from config.inc.php
      *
      * @param Context|null $context
      *
@@ -603,6 +624,11 @@ class ToolsCore
             return;
         }
 
+        /*
+         * This takes the isolang parameter from $_GET, converts it to an id_lang
+         * and assigns it into the GET. The isolang in the request always set by the Dispatcher.
+         * Either to a language code from the URL or the default language.
+         */
         if (
             ($iso = Tools::getValue('isolang'))
             && Validate::isLanguageIsoCode($iso)
@@ -614,6 +640,16 @@ class ToolsCore
         // Only switch if new ID is different from old ID
         $newLanguageId = (int) Tools::getValue('id_lang');
 
+        /*
+         * If we got a sensible language ID from the request, we will set it into the cookie
+         * and set it as the context language. There is already a default language set in the
+         * context from config.inc.php.
+         *
+         * @todo Please note that the cookie language ID has no effect as the language
+         * is exclusively determined by the URL. It may only by accessed by some really old
+         * codebase to read the language ID, but they should be updated to use the context
+         * language directly.
+         */
         if (
             Validate::isUnsignedId($newLanguageId)
             && $newLanguageId !== 0
@@ -944,7 +980,7 @@ class ToolsCore
                     }
                 }
 
-                if ($delete_self && file_exists($dirname)) {
+                if ($delete_self) {
                     if (!rmdir($dirname)) {
                         return false;
                     }
@@ -1001,6 +1037,9 @@ class ToolsCore
      * @return string
      *
      * @throws PrestaShopException If _PS_MODE_DEV_ is enabled
+     *
+     * @deprecated since 9.0.0 - Please throw an exception directly. It will be handled better and logged
+     * in all enviroments, to both PHP and our logs. This method will be eventually removed
      */
     public static function displayError($errorMessage = null, $htmlentities = null, ?Context $context = null)
     {
@@ -1077,6 +1116,8 @@ class ToolsCore
      * Prints object information into error log.
      *
      * @see error_log()
+     * @deprecated since 9.0.0 and will be removed in 10.0.0. Use error_log directly.
+     *             If you have an object or array, you can stringify it for example by print_r($object, true).
      *
      * @param mixed $object
      * @param int|null $message_type
@@ -1108,8 +1149,6 @@ class ToolsCore
      * @param string $passwd String to has
      *
      * @return string Hashed password
-     *
-     * @since 1.7.0
      */
     public static function hash($passwd)
     {
@@ -1122,8 +1161,6 @@ class ToolsCore
      * @param string $data String to encrypt
      *
      * @return string Hashed IV
-     *
-     * @since 1.7.0
      */
     public static function hashIV($data)
     {
@@ -1904,6 +1941,13 @@ class ToolsCore
      */
     public static function createFileFromUrl($url)
     {
+        // TODO use Validate::isUrl instead when it will be less permissive and also allows schemes to be validated
+        $scheme = parse_url($url, PHP_URL_SCHEME);
+
+        // Check if the scheme is allowed
+        if (!in_array(strtolower($scheme), ['http', 'https'], true)) {
+            return false;
+        }
         $remoteFile = fopen($url, 'rb');
         if (!$remoteFile) {
             return false;
@@ -2105,9 +2149,11 @@ class ToolsCore
             $path = _PS_ROOT_DIR_ . '/.htaccess';
         }
 
+        // Check if option "Apache optimization" was enabled in performance settings
         if (null === $cache_control) {
             $cache_control = (int) Configuration::get('PS_HTACCESS_CACHE_CONTROL');
         }
+
         if (null === $disable_multiviews) {
             $disable_multiviews = (bool) Configuration::get('PS_HTACCESS_DISABLE_MULTIVIEWS');
         }
@@ -2170,9 +2216,6 @@ class ToolsCore
 
         fwrite($write_fd, "RewriteEngine on\n");
 
-        // Protect .git files or folders
-        fwrite($write_fd, "# Protect .git\nRewriteRule \.git - [F,L]\n");
-
         if (
             !$medias
             && Configuration::getMultiShopValues('PS_MEDIA_SERVER_1')
@@ -2195,9 +2238,14 @@ class ToolsCore
             }
         }
 
-        if (Configuration::get('PS_WEBSERVICE_CGI_HOST')) {
-            fwrite($write_fd, "RewriteCond %{HTTP:Authorization} ^(.*)\nRewriteRule . - [E=HTTP_AUTHORIZATION:%1]\n\n");
-        }
+        /*
+         * Propagate authorization header to PHP that is normally removed by Apache.
+         * In the past, it was passed only if PS_WEBSERVICE_CGI_HOST was enabled,
+         * but today, there is no reason not to pass it.
+         */
+        fwrite($write_fd, "# Sets the HTTP_AUTHORIZATION header removed by apache\n");
+        fwrite($write_fd, "RewriteCond %{HTTP:Authorization} .\n");
+        fwrite($write_fd, "RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]\n\n");
 
         foreach ($domains as $domain => $list_uri) {
             // As we use regex in the htaccess, ipv6 surrounded by brackets must be escaped
@@ -2245,10 +2293,10 @@ class ToolsCore
                     $path_components = [];
                     for ($i = 1; $i <= 7; ++$i) {
                         $path_components[] = '$' . ($i + 1); // paths start on 2
-                        $path = implode('/', $path_components);
+                        $path_images = implode('/', $path_components);
                         fwrite($write_fd, $media_domains);
                         fwrite($write_fd, $domain_rewrite_cond);
-                        fwrite($write_fd, 'RewriteRule ^(' . str_repeat('([\d])', $i) . '(?:\-[\w-]*)?)/.+(\.(?:jpe?g|webp|png|avif))$ %{ENV:REWRITEBASE}img/p/' . $path . '/$1$' . ($i + 2) . " [L]\n");
+                        fwrite($write_fd, 'RewriteRule ^(' . str_repeat('([\d])', $i) . '(?:\-[\w-]*)?)/.+(\.(?:jpe?g|webp|png|avif))$ %{ENV:REWRITEBASE}img/p/' . $path_images . '/$1$' . ($i + 2) . " [L]\n");
                     }
 
                     fwrite($write_fd, "# Rewrites for category images\n");
@@ -2266,6 +2314,7 @@ class ToolsCore
                 }
                 fwrite($write_fd, 'RewriteRule ^images_ie/?([^/]+)\.(jpe?g|png|gif)$ %{ENV:REWRITEBASE}js/jquery/plugins/fancybox/images/$1.$2 [L]' . PHP_EOL);
             }
+
             // Redirections to dispatcher
             if ($rewrite_settings) {
                 fwrite($write_fd, "\n# Send all other traffic to dispatcher\n");
@@ -2285,17 +2334,22 @@ class ToolsCore
 
         fwrite($write_fd, "</IfModule>\n\n");
 
+        // Serve fonts properly and avoid CORS issues
+        fwrite($write_fd, "# Serve fonts properly and avoid CORS issues\n");
         fwrite($write_fd, "AddType application/vnd.ms-fontobject .eot\n");
         fwrite($write_fd, "AddType font/ttf .ttf\n");
         fwrite($write_fd, "AddType font/otf .otf\n");
         fwrite($write_fd, "AddType application/font-woff .woff\n");
         fwrite($write_fd, "AddType font/woff2 .woff2\n");
         fwrite($write_fd, "<IfModule mod_headers.c>
-	<FilesMatch \"\.(ttf|ttc|otf|eot|woff|woff2|svg)$\">
-		Header set Access-Control-Allow-Origin \"*\"
-	</FilesMatch>
+    <FilesMatch \"\.(ttf|ttc|otf|eot|woff|woff2|svg)$\">
+        Header set Access-Control-Allow-Origin \"*\"
+    </FilesMatch>
 </IfModule>\n\n");
-        fwrite($write_fd, '<Files composer.lock>
+
+        // Protect sensitive files from being accessed directly
+        fwrite($write_fd, '# Protect sensitive files from being accessed directly
+<FilesMatch "^(composer\.lock|\.git.*|\.env.*)$">
     # Apache 2.2
     <IfModule !mod_authz_core.c>
         Order deny,allow
@@ -2306,40 +2360,45 @@ class ToolsCore
     <IfModule mod_authz_core.c>
         Require all denied
     </IfModule>
-</Files>
+</FilesMatch>
+
 ');
-        // Cache control
+        // If option "Apache optimization" was enabled in performance settings, setup cache control
         if ($cache_control) {
-            $cache_control = "<IfModule mod_expires.c>
-	ExpiresActive On
+            $cache_control = "# Cache control for static files
+<IfModule mod_expires.c>
+    ExpiresActive On
     AddType image/webp .webp
     ExpiresByType image/webp \"access plus 1 month\"
     ExpiresByType image/avif \"access plus 1 month\"
-	ExpiresByType image/gif \"access plus 1 month\"
-	ExpiresByType image/jpeg \"access plus 1 month\"
-	ExpiresByType image/png \"access plus 1 month\"
-	ExpiresByType text/css \"access plus 1 week\"
-	ExpiresByType text/javascript \"access plus 1 week\"
-	ExpiresByType application/javascript \"access plus 1 week\"
-	ExpiresByType application/x-javascript \"access plus 1 week\"
-	ExpiresByType image/x-icon \"access plus 1 year\"
-	ExpiresByType image/svg+xml \"access plus 1 year\"
-	ExpiresByType image/vnd.microsoft.icon \"access plus 1 year\"
-	ExpiresByType application/font-woff \"access plus 1 year\"
-	ExpiresByType application/x-font-woff \"access plus 1 year\"
-	ExpiresByType font/woff2 \"access plus 1 year\"
-	ExpiresByType application/vnd.ms-fontobject \"access plus 1 year\"
-	ExpiresByType font/opentype \"access plus 1 year\"
-	ExpiresByType font/ttf \"access plus 1 year\"
-	ExpiresByType font/otf \"access plus 1 year\"
-	ExpiresByType application/x-font-ttf \"access plus 1 year\"
-	ExpiresByType application/x-font-otf \"access plus 1 year\"
+    ExpiresByType image/gif \"access plus 1 month\"
+    ExpiresByType image/jpeg \"access plus 1 month\"
+    ExpiresByType image/png \"access plus 1 month\"
+    ExpiresByType text/css \"access plus 1 week\"
+    ExpiresByType text/javascript \"access plus 1 week\"
+    ExpiresByType application/javascript \"access plus 1 week\"
+    ExpiresByType application/x-javascript \"access plus 1 week\"
+    ExpiresByType image/x-icon \"access plus 1 year\"
+    ExpiresByType image/svg+xml \"access plus 1 year\"
+    ExpiresByType image/vnd.microsoft.icon \"access plus 1 year\"
+    ExpiresByType application/font-woff \"access plus 1 year\"
+    ExpiresByType application/x-font-woff \"access plus 1 year\"
+    ExpiresByType font/woff2 \"access plus 1 year\"
+    ExpiresByType application/vnd.ms-fontobject \"access plus 1 year\"
+    ExpiresByType font/opentype \"access plus 1 year\"
+    ExpiresByType font/ttf \"access plus 1 year\"
+    ExpiresByType font/otf \"access plus 1 year\"
+    ExpiresByType application/x-font-ttf \"access plus 1 year\"
+    ExpiresByType application/x-font-otf \"access plus 1 year\"
 </IfModule>
 
+# Remove Etag header as this can cause issues with caching
 <IfModule mod_headers.c>
     Header unset Etag
 </IfModule>
 FileETag none
+
+# Enable GZIP compression for text, HTML, JavaScript, CSS, fonts and SVG files
 <IfModule mod_deflate.c>
     <IfModule mod_filter.c>
         AddOutputFilterByType DEFLATE text/html text/css text/javascript application/javascript application/x-javascript font/ttf application/x-font-ttf font/otf application/x-font-otf font/opentype image/svg+xml
@@ -2363,7 +2422,7 @@ FileETag none
         fclose($write_fd);
 
         if (!defined('PS_INSTALLATION_IN_PROGRESS')) {
-            Hook::exec('actionHtaccessCreate');
+            Hook::exec('actionHtaccessCreate', ['path' => $path]);
         }
 
         return true;
@@ -2383,15 +2442,15 @@ FileETag none
         }
 
         $robots_content = static::getRobotsContent();
-        $languagesIsoIds = Language::getIsoIds();
 
+        // Allow modules to modify the contents of the file
         if (true === $executeHook) {
             Hook::exec('actionAdminMetaBeforeWriteRobotsFile', [
                 'rb_data' => &$robots_content,
             ]);
         }
 
-        // PS Comments
+        // File header
         fwrite($write_fd, "# robots.txt automatically generated by PrestaShop e-commerce open-source solution\n");
         fwrite($write_fd, "# https://www.prestashop-project.org\n");
         fwrite($write_fd, "# This file is to prevent the crawling and indexing of certain parts\n");
@@ -2399,68 +2458,78 @@ FileETag none
         fwrite($write_fd, "# and Google. By telling these \"robots\" where not to go on your site,\n");
         fwrite($write_fd, "# you save bandwidth and server resources.\n");
         fwrite($write_fd, "# For more information about the robots.txt standard, see:\n");
-        fwrite($write_fd, "# https://www.robotstxt.org/robotstxt.html\n");
+        fwrite($write_fd, "# https://www.robotstxt.org/robotstxt.html\n\n");
 
-        // User-Agent
+        // User-Agent, we match everything
         fwrite($write_fd, "User-agent: *\n");
 
-        // Allow Directives
+        // Allow directives for modules
         if (count($robots_content['Allow'])) {
-            fwrite($write_fd, "# Allow Directives\n");
+            fwrite($write_fd, "\n# Allow directives for modules\n");
             foreach ($robots_content['Allow'] as $allow) {
                 fwrite($write_fd, 'Allow: ' . $allow . PHP_EOL);
             }
         }
 
-        // Private pages
+        // Non-friendly URLs and parameters blocked from crawling
         if (count($robots_content['GB'])) {
-            fwrite($write_fd, "# Private pages\n");
+            fwrite($write_fd, "\n# Non-friendly URLs and parameters blocked from crawling\n");
             foreach ($robots_content['GB'] as $gb) {
                 fwrite($write_fd, 'Disallow: /*' . $gb . PHP_EOL);
             }
         }
 
-        // Directories
+        // List of friendly rewrites on the shop blocked from crawling
         if (count($robots_content['Directories'])) {
-            foreach (self::getDomains() as $domain => $uriList) {
-                fwrite(
-                    $write_fd,
-                    sprintf(
-                        '# Directories for %s%s',
-                        $domain,
-                        PHP_EOL
-                    )
-                );
-                // Disallow multishop directories
+            // For this, we will need language iso codes for the URLs
+            $prefixesForGeneration = [];
+
+            // We will use all language prefixes
+            $languagesIsoIds = Language::getIsoIds();
+            foreach ($languagesIsoIds as $language) {
+                $prefixesForGeneration[] = $language['iso_code'] . '/';
+            }
+
+            // And a non-prefixed version also
+            $prefixesForGeneration[] = '';
+
+            // We will also load the iso code of our default language
+            $defaultLanguageIso = Language::getIsoById((int) Configuration::get('PS_LANG_DEFAULT'));
+
+            // And we load all domains and their physical uris
+            // We don't care about the domain, we are doing relative paths
+            foreach (self::getDomains() as $uriList) {
                 foreach ($uriList as $uri) {
-                    foreach ($robots_content['Directories'] as $dir) {
-                        fwrite($write_fd, 'Disallow: ' . $uri['physical'] . $dir . PHP_EOL);
-                    }
-                    // Disallow multilang directories
-                    if (is_array($languagesIsoIds) && count($languagesIsoIds) > 1) {
-                        foreach ($languagesIsoIds as $language) {
-                            foreach ($robots_content['Directories'] as $dir) {
-                                fwrite(
-                                    $write_fd,
-                                    sprintf(
-                                        'Disallow: %s%s/%s%s',
-                                        $uri['physical'],
-                                        $language['iso_code'],
-                                        $dir,
-                                        PHP_EOL
-                                    )
-                                );
-                            }
+                    // And start a new section
+                    fwrite($write_fd, sprintf("\n# Rules for %s%s", $uri['physical'], PHP_EOL));
+                    fwrite($write_fd, "# Directories blocked from crawling\n");
+
+                    // Directories blocked from crawling
+                    foreach ($prefixesForGeneration as $prefix) {
+                        foreach ($robots_content['Directories'] as $dir) {
+                            fwrite(
+                                $write_fd,
+                                sprintf(
+                                    'Disallow: %s%s%s%s',
+                                    $uri['physical'],
+                                    $prefix,
+                                    $dir,
+                                    PHP_EOL
+                                )
+                            );
                         }
                     }
-                    // Files
+
+                    // Friendly URLs blocked from crawling
                     if (count($robots_content['Files'])) {
-                        fwrite($write_fd, "# Files\n");
+                        fwrite($write_fd, "# Friendly URLs blocked from crawling\n");
                         foreach ($robots_content['Files'] as $iso_code => $files) {
                             foreach ($files as $file) {
-                                if (count($languagesIsoIds) > 1) {
-                                    fwrite($write_fd, 'Disallow: /*' . $iso_code . '/' . $file . PHP_EOL);
-                                } else {
+                                // Render language version all the time
+                                fwrite($write_fd, 'Disallow: ' . $uri['physical'] . $iso_code . '/' . $file . PHP_EOL);
+
+                                // If the language is a default one, also render it without prefix
+                                if ($iso_code == $defaultLanguageIso) {
                                     fwrite($write_fd, 'Disallow: ' . $uri['physical'] . $file . PHP_EOL);
                                 }
                             }
@@ -2478,7 +2547,7 @@ FileETag none
 
         // Sitemap
         if (file_exists($sitemap_file) && filesize($sitemap_file)) {
-            fwrite($write_fd, "# Sitemap\n");
+            fwrite($write_fd, "\n# Sitemap\n");
             $sitemap_filename = basename($sitemap_file);
             fwrite($write_fd, 'Sitemap: ' . static::getProtocol((bool) Configuration::get('PS_SSL_ENABLED')) . $_SERVER['SERVER_NAME']
                 . __PS_BASE_URI__ . $sitemap_filename . PHP_EOL);
@@ -2503,7 +2572,7 @@ FileETag none
     {
         $tab = [];
 
-        // Special allow directives
+        // Allow directives for modules
         $tab['Allow'] = [
             '*/modules/*.css',
             '*/modules/*.js',
@@ -2512,32 +2581,33 @@ FileETag none
             '*/modules/*.gif',
             '*/modules/*.svg',
             '*/modules/*.webp',
+            '*/modules/*.avif',
             '/js/jquery/*',
         ];
 
-        // Directories
+        // Directories blocked from crawling
         $tab['Directories'] = [
             'app/', 'cache/', 'classes/', 'config/', 'controllers/',
             'download/', 'js/', 'localization/', 'log/', 'mails/', 'modules/', 'override/',
             'pdf/', 'src/', 'tools/', 'translations/', 'upload/', 'var/', 'vendor/', 'webservice/',
         ];
 
-        // Files
+        // Friendly URLs blocked from crawling
         $disallow_controllers = [
             'addresses', 'address', 'authentication', 'cart', 'discount', 'footer',
             'get-file', 'header', 'history', 'identity', 'images.inc', 'init', 'my-account', 'order',
             'order-slip', 'order-detail', 'order-follow', 'order-return', 'order-confirmation', 'pagination', 'password',
             'pdf-invoice', 'pdf-order-return', 'pdf-order-slip', 'product-sort', 'registration', 'search', 'statistics', 'attachment', 'guest-tracking',
         ];
-
-        // Rewrite files
         $tab['Files'] = [];
         if (Configuration::get('PS_REWRITING_SETTINGS')) {
             $sql = 'SELECT DISTINCT ml.url_rewrite, l.iso_code
                 FROM ' . _DB_PREFIX_ . 'meta m
                 INNER JOIN ' . _DB_PREFIX_ . 'meta_lang ml ON ml.id_meta = m.id_meta
                 INNER JOIN ' . _DB_PREFIX_ . 'lang l ON l.id_lang = ml.id_lang
-                WHERE l.active = 1 AND m.page IN (\'' . implode('\', \'', $disallow_controllers) . '\')';
+                WHERE l.active = 1 AND
+                m.page IN (\'' . implode('\', \'', $disallow_controllers) . '\') AND
+                ml.url_rewrite IS NOT NULL AND ml.url_rewrite != \'\'';
             if ($results = Db::getInstance(_PS_USE_SQL_SLAVE_)->executeS($sql)) {
                 foreach ($results as $row) {
                     $tab['Files'][$row['iso_code']][] = $row['url_rewrite'];
@@ -2545,13 +2615,15 @@ FileETag none
             }
         }
 
-        // We prevent indexing some standardized parameters from the URL
-        // For example, "q" is a filter query, "order" is sorting etc.
+        // Non-friendly URLs and parameters blocked from crawling
+        // For example, "q" is a filter query, "order" is sorting etc
+        // Don't think about meaning of "GB"
         $tab['GB'] = [
             '?order=', '?tag=', '?id_currency=', '?search_query=', '?back=', '?n=', '?q=',
             '&order=', '&tag=', '&id_currency=', '&search_query=', '&back=', '&n=', '&q=',
         ];
 
+        // List of list of non-friendly URLs to block from crawling.
         foreach ($disallow_controllers as $controller) {
             $tab['GB'][] = 'controller=' . $controller;
         }
@@ -2880,7 +2952,7 @@ exit;
     {
         switch ($type) {
             case 'by':
-                $list = [0 => 'name', 1 => 'price', 2 => 'date_add', 3 => 'date_upd', 4 => 'position', 5 => 'manufacturer_name', 6 => 'quantity', 7 => 'reference'];
+                $list = [0 => 'name', 1 => 'price', 2 => 'date_add', 3 => 'date_upd', 4 => 'position', 5 => 'manufacturer_name', 6 => 'quantity', 7 => 'reference', 8 => 'sales'];
                 $value = (null === $value || $value === false || $value === '') ? (int) Configuration::get('PS_PRODUCTS_ORDER_BY') : $value;
                 $value = (isset($list[$value])) ? $list[$value] : ((in_array($value, $list)) ? $value : 'position');
                 $order_by_prefix = '';
@@ -2945,8 +3017,6 @@ exit;
 
     /**
      * Concat $begin and $end, add ? or & between strings.
-     *
-     * @since 1.5.0
      *
      * @param string $begin
      * @param string $end
@@ -3107,8 +3177,6 @@ exit;
     /**
      * Allow to get the memory limit in octets.
      *
-     * @since 1.4.5.0
-     *
      * @return int|string the memory limit value in octet
      */
     public static function getMemoryLimit()
@@ -3120,8 +3188,6 @@ exit;
 
     /**
      * Gets the value of a configuration option in octets.
-     *
-     * @since 1.5.0
      *
      * @param string $option
      *
@@ -3157,7 +3223,7 @@ exit;
      */
     public static function isPHPCLI()
     {
-        return defined('STDIN') || (Tools::strtolower(PHP_SAPI) == 'cli' && (!isset($_SERVER['REMOTE_ADDR']) || empty($_SERVER['REMOTE_ADDR'])));
+        return defined('STDIN') || (Tools::strtolower(PHP_SAPI) == 'cli' && empty($_SERVER['REMOTE_ADDR']));
     }
 
     public static function argvToGET($argc, $argv)
@@ -3209,8 +3275,6 @@ exit;
      * @param string $name module name
      *
      * @return bool true if exists
-     *
-     * @since 1.4.5.0
      */
     public static function apacheModExists($name)
     {
@@ -3317,8 +3381,6 @@ exit;
      * @param string $dir Add this to prefix output for example /path/dir/*
      *
      * @return array List of file found
-     *
-     * @since 1.5.0
      */
     public static function scandir($path, $ext = 'php', $dir = '', $recursive = false)
     {
@@ -3409,13 +3471,33 @@ exit;
         return false;
     }
 
-    public static function unSerialize($serialized, $object = false)
+    /**
+     * Safely unserializes input string with protection against object injection.
+     *
+     * @param string $serialized Serialized string to decode
+     * @param bool $allowObjects Whether to allow object unserialization
+     *
+     * @return mixed|null Unserialized data or false on failure
+     */
+    public static function unSerialize($serialized, $allowObjects = false)
     {
-        if (is_string($serialized) && (strpos($serialized, 'O:') === false || !preg_match('/(^|;|{|})O:[0-9]+:"/', $serialized)) && !$object || $object) {
-            return @unserialize($serialized);
+        // Only allow if it's a string
+        if (!is_string($serialized)) {
+            return false;
         }
 
-        return false;
+        // Check for potentially malicious serialized objects
+        if (!$allowObjects) {
+            if (str_contains($serialized, 'O:') && preg_match('/(^|;|{|})O:[0-9]+:"/', $serialized)) {
+                return false;
+            }
+
+            // Use native protection only if we disallow objects
+            return @unserialize($serialized, ['allowed_classes' => false]);
+        }
+
+        // Otherwise allow objects as usual
+        return @unserialize($serialized);
     }
 
     /**
@@ -3624,6 +3706,10 @@ exit;
                         'poster' => 'URI',
                         'preload' => 'Enum#auto,metadata,none',
                         'controls' => 'Bool',
+                        'autoplay' => 'Bool',
+                        'loop' => 'Bool',
+                        'muted' => 'Bool',
+                        'playsinline' => 'Bool',
                     ]);
                     $def->addElement('source', 'Block', 'Flow', 'Common', [
                         'src' => 'URI',
@@ -3632,6 +3718,9 @@ exit;
                     if ($allow_style) {
                         $def->addElement('style', 'Block', 'Flow', 'Common', ['type' => 'Text']);
                     }
+                    Hook::exec('actionModifyHtmlPurifierConfig', [
+                        'config' => &$config,
+                    ]);
                 }
 
                 $purifier = new HTMLPurifier($config);
@@ -3938,6 +4027,25 @@ exit;
         $queryString = str_replace('%2F', '/', http_build_query($params, '', '&'));
 
         return $url . ($queryString ? "?$queryString" : '');
+    }
+
+    /**
+     * Checks if the current visitor is allowed to view the page even if maintenace mode is on, either via IP whitelist or being logged in in backoffice.
+     */
+    public static function isAllowedToBypassMaintenance()
+    {
+        $is_admin = (int) (new Cookie('psAdmin'))->id_employee;
+        $maintenance_allow_admins = (bool) Configuration::get('PS_MAINTENANCE_ALLOW_ADMINS');
+        if ($is_admin && $maintenance_allow_admins) {
+            return true;
+        }
+
+        $allowed_ips = array_map('trim', explode(',', Configuration::get('PS_MAINTENANCE_IP')));
+        if (IpUtils::checkIp(Tools::getRemoteAddr(), $allowed_ips)) {
+            return true;
+        }
+
+        return false;
     }
 }
 

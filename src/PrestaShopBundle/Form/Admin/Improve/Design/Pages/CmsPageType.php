@@ -88,7 +88,7 @@ class CmsPageType extends TranslatorAwareType
      */
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
-        $invalidCharsText = sprintf('%s <>={}', $this->trans('Invalid characters:', 'Admin.Notifications.Info'));
+        $invalidCharsText = sprintf('%s <>{}', $this->trans('Invalid characters:', 'Admin.Notifications.Info'));
 
         $builder
             ->add('page_category_id', MaterialChoiceTreeType::class, [
@@ -143,6 +143,9 @@ class CmsPageType extends TranslatorAwareType
                 'template' => '@PrestaShop/Admin/Improve/Design/Cms/Blocks/seo_preview.html.twig',
                 'data' => [
                     'cms_url' => $options['cms_preview_url'],
+                ],
+                'row_attr' => [
+                    'class' => 'seo_preview',
                 ],
             ])
             ->add('meta_title', TranslatableType::class, [

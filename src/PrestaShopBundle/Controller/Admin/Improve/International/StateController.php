@@ -32,6 +32,7 @@ use PrestaShop\PrestaShop\Core\Domain\Country\Exception\CountryConstraintExcepti
 use PrestaShop\PrestaShop\Core\Domain\Country\Exception\CountryNotFoundException;
 use PrestaShop\PrestaShop\Core\Domain\State\Command\BulkDeleteStateCommand;
 use PrestaShop\PrestaShop\Core\Domain\State\Command\BulkToggleStateStatusCommand;
+use PrestaShop\PrestaShop\Core\Domain\State\Command\BulkUpdateStateZoneCommand;
 use PrestaShop\PrestaShop\Core\Domain\State\Command\DeleteStateCommand;
 use PrestaShop\PrestaShop\Core\Domain\State\Command\ToggleStateStatusCommand;
 use PrestaShop\PrestaShop\Core\Domain\State\Exception\CannotAddStateException;
@@ -48,6 +49,7 @@ use PrestaShop\PrestaShop\Core\Form\IdentifiableObject\Handler\FormHandlerInterf
 use PrestaShop\PrestaShop\Core\Grid\GridFactoryInterface;
 use PrestaShop\PrestaShop\Core\Search\Filters\StateFilters;
 use PrestaShopBundle\Controller\Admin\PrestaShopAdminController;
+use PrestaShopBundle\Form\Admin\Improve\International\Locations\ChangeStatesZoneType;
 use PrestaShopBundle\Security\Attribute\AdminSecurity;
 use PrestaShopBundle\Security\Attribute\DemoRestricted;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
@@ -55,7 +57,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Throwable;
 
 /**
  * Responsible for handling country states data
@@ -69,6 +70,7 @@ class StateController extends PrestaShopAdminController
      *
      * @return JsonResponse
      */
+    #[AdminSecurity("is_granted('read', request.get('_legacy_controller')) || is_granted('create', request.get('AdminCustomers')) || is_granted('update', request.get('AdminCustomers')) || is_granted('create', request.get('AdminManufacturers')) || is_granted('update', request.get('AdminManufacturers')) || is_granted('create', request.get('AdminSuppliers')) || is_granted('update', request.get('AdminSuppliers'))")]
     public function getStatesAction(
         Request $request,
         #[Autowire(service: 'prestashop.adapter.form.choice_provider.country_state_by_id')]
@@ -93,6 +95,50 @@ class StateController extends PrestaShopAdminController
     }
 
     /**
+     * Provides country states select input options for legacy pages
+     *
+     * @param Request $request
+     *
+     * @return Response
+     */
+    #[AdminSecurity("is_granted('read', request.get('_legacy_controller')) || is_granted('create', request.get('AdminTaxRulesGroup')) || is_granted('update', request.get('AdminTaxRulesGroup')) || is_granted('create', request.get('AdminStores')) || is_granted('update', request.get('AdminStores'))")]
+    public function getLegacyStatesOptionsAction(
+        Request $request,
+        #[Autowire(service: 'prestashop.adapter.form.choice_provider.country_state_by_id')]
+        CountryStateByIdChoiceProvider $statesProvider
+    ): Response {
+        try {
+            $countryId = (int) $request->query->get('id_country');
+            $states = $statesProvider->getChoices([
+                'id_country' => $countryId,
+            ]);
+
+            if (!empty($states)) {
+                $htmlResponse = '';
+                if ($request->query->get('no_empty')) {
+                    $emptyValue = $request->get('empty_value') ?: '-';
+                    $htmlResponse = '<option value="0">' . htmlentities($emptyValue, ENT_QUOTES, 'utf-8') . '</option>' . "\n";
+                }
+
+                $queryStateId = (int) $request->query->get('id_state');
+                foreach ($states as $stateName => $stateId) {
+                    $htmlResponse .= '<option value="' . $stateId . '"' . ($queryStateId == $stateId ? ' selected="selected"' : '') . '>' . $stateName . '</option>' . "\n";
+                }
+
+                return new Response($htmlResponse);
+            }
+        } catch (Exception $e) {
+            return $this->json([
+                'message' => $this->getErrorMessageForException($e, []),
+            ],
+                Response::HTTP_INTERNAL_SERVER_ERROR
+            );
+        }
+
+        return new Response('false');
+    }
+
+    /**
      * Show states listing page
      *
      * @param Request $request
@@ -108,10 +154,12 @@ class StateController extends PrestaShopAdminController
         GridFactoryInterface $gridFactory
     ): Response {
         $stateGrid = $gridFactory->getGrid($filters);
+        $changeStatesZoneForm = $this->createForm(ChangeStatesZoneType::class);
 
         return $this->render('@PrestaShop/Admin/Improve/International/Locations/State/index.html.twig', [
             'help_link' => $this->generateSidebarLink($request->attributes->get('_legacy_controller')),
             'stateGrid' => $this->presentGrid($stateGrid),
+            'changeStatesZoneForm' => $changeStatesZoneForm->createView(),
             'enableSidebar' => true,
             'layoutHeaderToolbarBtn' => $this->getToolbarButtons(),
         ]);
@@ -289,7 +337,7 @@ class StateController extends PrestaShopAdminController
                 $this->trans('Successful deletion', [], 'Admin.Notifications.Success')
             );
         } catch (StateException $e) {
-            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages($e)));
+            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages()));
         }
 
         return $this->redirectToRoute('admin_states_index');
@@ -316,7 +364,7 @@ class StateController extends PrestaShopAdminController
                 $this->trans('The status has been successfully updated.', [], 'Admin.Notifications.Success')
             );
         } catch (StateException $e) {
-            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages($e)));
+            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages()));
         }
 
         return $this->redirectToRoute('admin_states_index');
@@ -343,7 +391,38 @@ class StateController extends PrestaShopAdminController
                 $this->trans('The status has been successfully updated.', [], 'Admin.Notifications.Success')
             );
         } catch (StateException $e) {
-            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages($e)));
+            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages()));
+        }
+
+        return $this->redirectToRoute('admin_states_index');
+    }
+
+    /**
+     * Bulk update states zone
+     *
+     * @param Request $request
+     *
+     * @return RedirectResponse
+     */
+    #[DemoRestricted(redirectRoute: 'admin_states_index')]
+    #[AdminSecurity("is_granted('update', request.get('_legacy_controller'))", redirectRoute: 'admin_states_index')]
+    public function bulkUpdateZoneAction(Request $request): RedirectResponse
+    {
+        $changeStatesZoneForm = $this->createForm(ChangeStatesZoneType::class);
+        $changeStatesZoneForm->handleRequest($request);
+
+        $data = $changeStatesZoneForm->getData();
+
+        try {
+            $this->dispatchCommand(
+                new BulkUpdateStateZoneCommand($data['state_ids'], (int) $data['new_zone_id'])
+            );
+
+            $this->addFlash('success', $this->trans('Successful update', [], 'Admin.Notifications.Success'));
+        } catch (StateException $e) {
+            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages()));
+        } catch (Exception $e) {
+            $this->addFlash('error', $this->getErrorMessageForException($e, $this->getErrorMessages()));
         }
 
         return $this->redirectToRoute('admin_states_index');
@@ -382,11 +461,9 @@ class StateController extends PrestaShopAdminController
     }
 
     /**
-     * @param Throwable|null $e
-     *
      * @return array
      */
-    private function getErrorMessages(?Throwable $e = null): array
+    private function getErrorMessages(): array
     {
         return [
             StateException::class => $this->trans(

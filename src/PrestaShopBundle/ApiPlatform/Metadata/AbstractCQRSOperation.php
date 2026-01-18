@@ -29,9 +29,13 @@ declare(strict_types=1);
 namespace PrestaShopBundle\ApiPlatform\Metadata;
 
 use ApiPlatform\Exception\InvalidArgumentException;
-use ApiPlatform\Metadata\HttpOperation;
+use ApiPlatform\Metadata\Parameters;
+use ApiPlatform\OpenApi\Attributes\Webhook;
+use ApiPlatform\OpenApi\Model\Operation as OpenApiOperation;
+use ApiPlatform\State\OptionsInterface;
+use Stringable;
 
-abstract class AbstractCQRSOperation extends HttpOperation
+abstract class AbstractCQRSOperation extends AbstractScopedOperation
 {
     public function __construct(
         string $method = self::METHOD_GET,
@@ -54,14 +58,15 @@ abstract class AbstractCQRSOperation extends HttpOperation
         ?array $schemes = null,
         ?string $condition = null,
         ?string $controller = null,
+        ?array $headers = null,
         ?array $cacheHeaders = null,
-
+        ?array $paginationViaCursor = null,
         ?array $hydraContext = null,
         ?array $openapiContext = null,
-        ?bool $openapi = null,
+        bool|OpenApiOperation|Webhook|null $openapi = null,
         ?array $exceptionToStatus = null,
-
-        ?bool $queryParameterValidationEnabled = null,
+        ?array $links = null,
+        ?array $errors = null,
 
         ?string $shortName = null,
         ?string $class = null,
@@ -75,16 +80,16 @@ abstract class AbstractCQRSOperation extends HttpOperation
         ?bool $paginationClientPartial = null,
         ?bool $paginationFetchJoinCollection = null,
         ?bool $paginationUseOutputWalkers = null,
-        ?array $paginationViaCursor = null,
         ?array $order = null,
         ?string $description = null,
         ?array $normalizationContext = null,
         ?array $denormalizationContext = null,
-        ?string $security = null,
+        ?bool $collectDenormalizationErrors = null,
+        string|Stringable|null $security = null,
         ?string $securityMessage = null,
-        ?string $securityPostDenormalize = null,
+        string|Stringable|null $securityPostDenormalize = null,
         ?string $securityPostDenormalizeMessage = null,
-        ?string $securityPostValidation = null,
+        string|Stringable|null $securityPostValidation = null,
         ?string $securityPostValidationMessage = null,
         ?string $deprecationReason = null,
         ?array $filters = null,
@@ -106,6 +111,9 @@ abstract class AbstractCQRSOperation extends HttpOperation
         ?string $name = null,
         $provider = null,
         $processor = null,
+        ?OptionsInterface $stateOptions = null,
+        array|Parameters|null $parameters = null,
+        ?bool $queryParameterValidationEnabled = null,
         array $extraProperties = [],
         ?string $CQRSQuery = null,
         array $scopes = [],
@@ -114,11 +122,6 @@ abstract class AbstractCQRSOperation extends HttpOperation
         ?bool $experimentalOperation = null,
     ) {
         $passedArguments = \get_defined_vars();
-
-        if (!empty($scopes)) {
-            $extraScopes = $passedArguments['extraProperties']['scopes'] ?? [];
-            $passedArguments['extraProperties']['scopes'] = array_values(array_unique(array_merge($extraScopes, $scopes)));
-        }
 
         if (!empty($CQRSQuery)) {
             $this->checkArgumentAndExtraParameterValidity('CQRSQuery', $CQRSQuery, $passedArguments['extraProperties']);
@@ -130,25 +133,9 @@ abstract class AbstractCQRSOperation extends HttpOperation
             $passedArguments['extraProperties']['CQRSQueryMapping'] = $CQRSQueryMapping;
         }
 
-        if (!empty($ApiResourceMapping)) {
-            $this->checkArgumentAndExtraParameterValidity('ApiResourceMapping', $ApiResourceMapping, $passedArguments['extraProperties']);
-            $passedArguments['extraProperties']['ApiResourceMapping'] = $ApiResourceMapping;
-        }
-
-        if (null !== $experimentalOperation) {
-            $this->checkArgumentAndExtraParameterValidity('experimentalOperation', $experimentalOperation, $passedArguments['extraProperties']);
-            $passedArguments['extraProperties']['experimentalOperation'] = $experimentalOperation;
-        }
-
         // Remove custom arguments
-        unset($passedArguments['scopes']);
         unset($passedArguments['CQRSQuery']);
         unset($passedArguments['CQRSQueryMapping']);
-        unset($passedArguments['ApiResourceMapping']);
-        unset($passedArguments['experimentalOperation']);
-
-        // Unless especially specified we only handle JSON format by default
-        $passedArguments['formats'] = $formats ?? ['json'];
 
         parent::__construct(...$passedArguments);
     }

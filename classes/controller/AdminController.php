@@ -736,6 +736,7 @@ class AdminControllerCore extends Controller
                         /** @var bool|string $val */
                         $filter_value = '';
                         if (isset($t['type']) && $t['type'] == 'bool') {
+                            // @phpstan-ignore-next-line
                             $filter_value = ((bool) $val) ? $this->trans('Yes', [], 'Admin.Global') : $this->trans('No', [], 'Admin.Global');
                         } elseif (isset($t['type']) && $t['type'] == 'date' || isset($t['type']) && $t['type'] == 'datetime') {
                             $date = json_decode($val, true);
@@ -1626,7 +1627,7 @@ class AdminControllerCore extends Controller
                     $back = self::$currentIndex . '&token=' . $this->token;
                 }
                 if (!Validate::isCleanHtml($back)) {
-                    die(Tools::displayError('Provided "back" parameter is invalid.'));
+                    throw new PrestaShopException('Provided "back" parameter is invalid.');
                 }
                 if (!$this->lite_display) {
                     $this->page_header_toolbar_btn['back'] = [
@@ -1699,7 +1700,7 @@ class AdminControllerCore extends Controller
                     $back = self::$currentIndex . '&token=' . $this->token;
                 }
                 if (!Validate::isCleanHtml($back)) {
-                    die(Tools::displayError('Provided "back" parameter is invalid.'));
+                    throw new PrestaShopException('Provided "back" parameter is invalid.');
                 }
                 if (!$this->lite_display) {
                     $this->toolbar_btn['cancel'] = [
@@ -1716,7 +1717,7 @@ class AdminControllerCore extends Controller
                     $back = self::$currentIndex . '&token=' . $this->token;
                 }
                 if (!Validate::isCleanHtml($back)) {
-                    die(Tools::displayError('Provided "back" parameter is invalid.'));
+                    throw new PrestaShopException('Provided "back" parameter is invalid.');
                 }
                 if (!$this->lite_display) {
                     $this->toolbar_btn['back'] = [
@@ -2135,7 +2136,7 @@ class AdminControllerCore extends Controller
     private function getTabs($parentId = 0, $level = 0)
     {
         $tabs = Tab::getTabs($this->context->language->id, $parentId);
-        $current_id = Tab::getCurrentParentId();
+        $current_id = (int) Tab::getCurrentParentId();
 
         foreach ($tabs as $index => $tab) {
             if (!Tab::checkTabRights($tab['id_tab'])
@@ -2161,7 +2162,7 @@ class AdminControllerCore extends Controller
                 // If the route specified is not accessible we remove the tab (it can happen during module install process
                 // the route should be usable in next request/process once the cache has been cleared - on process shutdown).
                 // This is not ideal, but clearing the cache during a process and restart the whole kernel is quite a challenge.
-                $this->get('logger')->addWarning(
+                $this->get('logger')->warning(
                     sprintf('Route not found in one of the Tab %s', $tab['route_name'] ?? ''),
                     [
                         'message' => $e->getMessage(),
@@ -2515,7 +2516,7 @@ class AdminControllerCore extends Controller
                 $back = self::$currentIndex . '&token=' . $this->token;
             }
             if (!Validate::isCleanHtml($back)) {
-                die(Tools::displayError('Provided "back" parameter is invalid.'));
+                throw new PrestaShopException('Provided "back" parameter is invalid.');
             }
 
             $helper->back_url = $back;
@@ -3724,10 +3725,9 @@ class AdminControllerCore extends Controller
         }
 
         /* Multilingual fields */
-        $class_vars = get_class_vars(get_class($object));
         $fields = [];
-        if (isset($class_vars['definition']['fields'])) {
-            $fields = $class_vars['definition']['fields'];
+        if (isset($object::$definition['fields'])) {
+            $fields = $object::$definition['fields'];
         }
 
         foreach ($fields as $field => $params) {
@@ -4380,7 +4380,7 @@ class AdminControllerCore extends Controller
                 'toolbar_extra_buttons_collection' => &$toolbarButtonsCollection,
             ]);
         } catch (Exception $exception) {
-            $this->get('logger')->addWarning(
+            $this->get('logger')->warning(
                 'There was an error retrieving toolbar buttons from Hooks. Toolbar buttons are probably not complete',
                 [
                     'message' => $exception->getMessage(),

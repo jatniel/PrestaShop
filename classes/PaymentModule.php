@@ -252,7 +252,7 @@ abstract class PaymentModuleCore extends Module
 
         if (!$this->active) {
             PrestaShopLogger::addLog('PaymentModule::validateOrder - Module is not active', 3, null, 'Cart', (int) $id_cart, true);
-            die(Tools::displayError('Error processing order. Payment module is not active.'));
+            throw new PrestaShopException('Error processing order. Payment module is not active.');
         }
 
         // Make sure cart is loaded and not related to an existing order
@@ -260,12 +260,12 @@ abstract class PaymentModuleCore extends Module
         if (!$cart_is_loaded || $this->context->cart->OrderExists()) {
             $error = $this->trans('Cart cannot be loaded or an order has already been placed using this cart', [], 'Admin.Payment.Notification');
             PrestaShopLogger::addLog($error, 4, 1, 'Cart', (int) $this->context->cart->id);
-            die(Tools::displayError($error));
+            throw new PrestaShopException($error);
         }
 
         if ($secure_key !== false && $secure_key != $this->context->cart->secure_key) {
             PrestaShopLogger::addLog('PaymentModule::validateOrder - Secure key does not match', 3, null, 'Cart', (int) $id_cart, true);
-            die(Tools::displayError('Error processing order. Secure key does not match.'));
+            throw new PrestaShopException('Error processing order. Secure key does not match.');
         }
 
         // For each package, generate an order
@@ -417,7 +417,7 @@ abstract class PaymentModuleCore extends Module
             if (!isset($order->id)) {
                 $error = $this->trans('Order creation failed', [], 'Admin.Payment.Notification');
                 PrestaShopLogger::addLog($error, 4, 2, 'Cart', (int) $order->id_cart);
-                die(Tools::displayError($error));
+                throw new PrestaShopException($error);
             }
             if (!$secure_key) {
                 $message .= '<br />' . $this->trans('Warning: the secure key is empty, check your payment account before validation', [], 'Admin.Payment.Notification');
@@ -478,7 +478,7 @@ abstract class PaymentModuleCore extends Module
                         $customization_text = '';
                         if (isset($customization['datas'][Product::CUSTOMIZE_TEXTFIELD])) {
                             foreach ($customization['datas'][Product::CUSTOMIZE_TEXTFIELD] as $text) {
-                                $customization_text .= '<strong>' . $text['name'] . '</strong>: ' . $text['value'] . '<br />';
+                                $customization_text .= '<strong>' . $text['name'] . '</strong>: ' . htmlspecialchars($text['value'], ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') . '<br />';
                             }
                         }
 
@@ -495,6 +495,13 @@ abstract class PaymentModuleCore extends Module
                         ];
                     }
                 }
+
+                Hook::exec('actionPaymentModuleProductVarTplAfter', [
+                    'product_var_tpl' => &$product_var_tpl,
+                    'product' => $product,
+                    'order' => $order,
+                    'context' => $this->context,
+                ]);
 
                 $product_var_tpl_list[] = $product_var_tpl;
                 // Check if is not a virtual product for the displaying of shipping
@@ -572,8 +579,8 @@ abstract class PaymentModuleCore extends Module
                 'orderStatus' => $order_status,
             ]);
 
-            foreach ($this->context->cart->getProducts() as $product) {
-                if ($order_status->logable) {
+            if ($order_status->logable) {
+                foreach ($this->context->cart->getProducts() as $product) {
                     ProductSale::addProductSale((int) $product['id_product'], (int) $product['cart_quantity']);
                 }
             }
@@ -680,7 +687,7 @@ abstract class PaymentModuleCore extends Module
                         '{id_order}' => $order->id,
                         '{date}' => Tools::displayDate(date('Y-m-d H:i:s'), true),
                         '{carrier}' => ($virtual_product || !isset($carrier->name)) ? $this->trans('No carrier', [], 'Admin.Payment.Notification') : $carrier->name,
-                        '{payment}' => Tools::substr($order->payment, 0, 255) . ($order->hasBeenPaid() ? '' : '&nbsp;' . $this->trans('(waiting for validation)', [], 'Emails.Body')),
+                        '{payment}' => $order->payment,
                         '{products}' => $product_list_html,
                         '{products_txt}' => $product_list_txt,
                         '{discounts}' => $cart_rules_list_html,
@@ -847,8 +854,6 @@ abstract class PaymentModuleCore extends Module
     /**
      * Allows specified payment modules to be used by a specific currency.
      *
-     * @since 1.4.5
-     *
      * @param int $id_currency
      * @param array $id_module_list
      *
@@ -882,7 +887,6 @@ abstract class PaymentModuleCore extends Module
      * List all installed and active payment modules.
      *
      * @see Module::getPaymentModules() if you need a list of module related to the user context
-     * @since 1.4.5
      *
      * @return array module information
      */
@@ -1149,7 +1153,7 @@ abstract class PaymentModuleCore extends Module
             ];
 
             // If the reduction is not applicable to this order, then continue with the next one
-            if (!$values['tax_excl']) {
+            if (!$values['tax_excl'] && empty($cartRule->gift_product)) {
                 continue;
             }
 

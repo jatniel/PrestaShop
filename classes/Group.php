@@ -214,9 +214,20 @@ class GroupCore extends ObjectModel
 
     public function delete()
     {
-        if ($this->id == (int) Configuration::get('PS_CUSTOMER_GROUP')) {
+        // Prevent calling the logic in case of an invalid object
+        if (empty($this->id)) {
             return false;
         }
+
+        // Prevent deletion of groups currently used in configuration
+        if (in_array($this->id, [
+            (int) Configuration::get('PS_UNIDENTIFIED_GROUP'),
+            (int) Configuration::get('PS_GUEST_GROUP'),
+            (int) Configuration::get('PS_CUSTOMER_GROUP'),
+        ])) {
+            throw new PrestaShopException('You cannot delete a group that is used in the shop configuration.');
+        }
+
         if (parent::delete()) {
             Db::getInstance()->execute('DELETE FROM `' . _DB_PREFIX_ . 'cart_rule_group` WHERE `id_group` = ' . (int) $this->id);
             Db::getInstance()->execute('DELETE FROM `' . _DB_PREFIX_ . 'customer_group` WHERE `id_group` = ' . (int) $this->id);
@@ -254,8 +265,6 @@ class GroupCore extends ObjectModel
     /**
      * This method is allow to know if a feature is used or active.
      *
-     * @since 1.5.0.1
-     *
      * @return bool
      */
     public static function isFeatureActive()
@@ -269,8 +278,6 @@ class GroupCore extends ObjectModel
 
     /**
      * This method is allow to know if there are other groups than the default ones.
-     *
-     * @since 1.5.0.1
      *
      * @param string|null $table Name of table linked to entity
      * @param bool $has_active_column True if the table has an active column

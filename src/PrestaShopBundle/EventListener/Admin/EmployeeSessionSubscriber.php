@@ -29,6 +29,7 @@ namespace PrestaShopBundle\EventListener\Admin;
 use Doctrine\ORM\EntityManagerInterface;
 use PrestaShop\PrestaShop\Adapter\LegacyContext;
 use PrestaShop\PrestaShop\Core\ConfigurationInterface;
+use PrestaShop\PrestaShop\Core\Context\EmployeeContextBuilder;
 use PrestaShopBundle\Entity\Employee\Employee;
 use PrestaShopBundle\Entity\Employee\EmployeeSession;
 use PrestaShopBundle\Entity\Repository\EmployeeRepository;
@@ -42,6 +43,7 @@ use Symfony\Component\HttpFoundation\RedirectResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\FlashBagAwareSessionInterface;
 use Symfony\Component\HttpKernel\Event\RequestEvent;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Csrf\CsrfTokenManagerInterface;
@@ -72,6 +74,7 @@ class EmployeeSessionSubscriber implements EventSubscriberInterface
         private readonly RouterInterface $router,
         private readonly ConfigurationInterface $configuration,
         private readonly TranslatorInterface $translator,
+        private readonly EmployeeContextBuilder $employeeContextBuilder,
     ) {
     }
 
@@ -82,6 +85,7 @@ class EmployeeSessionSubscriber implements EventSubscriberInterface
             LoginSuccessEvent::class => 'onLoginSuccess',
             // Must be executed after the firewall listener
             KernelEvents::REQUEST => [['onKernelRequest', 7]],
+            KernelEvents::RESPONSE => 'onKernelResponse',
             LogoutEvent::class => 'onLogout',
             TokenDeauthenticatedEvent::class => 'cleanEmployeeSessions',
         ];
@@ -98,6 +102,10 @@ class EmployeeSessionSubscriber implements EventSubscriberInterface
         $employee->addSession($employeeSession);
         $this->entityManager->persist($employeeSession);
         $this->entityManager->flush();
+
+        // Update EmployeeContextBuilder so the EmployeeContext is ready to be built in early request events,
+        // like in ShopContextSubscriber::initShopContextOnLogin for example
+        $this->employeeContextBuilder->setEmployeeId($employee->getId());
 
         // Set the EmployeeSession as a token attribute so that it is serialized in the session
         $event->getAuthenticatedToken()->setAttribute(TokenAttributes::EMPLOYEE_SESSION, $employeeSession);
@@ -161,6 +169,15 @@ class EmployeeSessionSubscriber implements EventSubscriberInterface
         $this->updateLegacyCookie($event->getRequest());
     }
 
+    public function onKernelResponse(ResponseEvent $event): void
+    {
+        if (!$event->isMainRequest()) {
+            return;
+        }
+
+        $this->legacyContext->getContext()->cookie->write();
+    }
+
     public function cleanEmployeeSessions(TokenDeauthenticatedEvent $event): void
     {
         /** @var Employee $employee */
@@ -198,8 +215,11 @@ class EmployeeSessionSubscriber implements EventSubscriberInterface
         // Set the redirection so the process stops right away
         $event->setResponse(new RedirectResponse($this->router->generate('admin_login')));
 
-        // Save the target path so the next login will redirect to the url requested at the moment of the logout
-        $this->saveTargetPath($event->getRequest()->getSession(), 'main', $event->getRequest()->getUri());
+        // Save the target path so the next login will redirect to the url requested at the moment of the logout, avoid saving
+        // ajax requests or not GET request because the redirection would fail
+        if ($event->getRequest()->hasSession() && $event->getRequest()->isMethodSafe() && !$event->getRequest()->isXmlHttpRequest()) {
+            $this->saveTargetPath($event->getRequest()->getSession(), 'main', $event->getRequest()->getUri());
+        }
 
         // Stop the event propagation, nothing more needs to happen except for redirection, and it prevents the event to
         // keep travelling and be caught by other unwanted listeners (like the TokenizedUrlsListener)

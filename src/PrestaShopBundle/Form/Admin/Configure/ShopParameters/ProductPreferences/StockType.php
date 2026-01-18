@@ -101,7 +101,7 @@ class StockType extends TranslatorAwareType
                     'Admin.Shopparameters.Feature'
                 ),
                 'help' => $this->trans(
-                    'By default, the "%add_to_cart_label%" button is hidden when a product is unavailable. You can choose to have it displayed in all cases.',
+                    'Allow or deny customers to order products that are out of stock. Further customization is possible for each product.',
                     'Admin.Shopparameters.Help',
                     [
                         '%add_to_cart_label%' => $this->trans(
@@ -125,6 +125,7 @@ class StockType extends TranslatorAwareType
                     ],
                 ],
                 'required' => false,
+                'help' => $this->trans('This will be the default displayed availability of a product, if there is at least 1 in stock. If you don\'t enter anything, nothing will be displayed. Further customization is possible for each product.', 'Admin.Catalog.Help'),
             ])
             ->add('oos_allowed_backorders', TranslatableType::class, [
                 'label' => $this->trans(
@@ -139,6 +140,7 @@ class StockType extends TranslatorAwareType
                     ],
                 ],
                 'required' => false,
+                'help' => $this->trans('This will be the default displayed availability of a product, if it\'s not in stock and backordering it is enabled. If you don\'t enter anything, nothing will be displayed. Further customization is possible for each product.', 'Admin.Catalog.Help'),
             ])
             ->add('oos_denied_backorders', TranslatableType::class, [
                 'label' => $this->trans(
@@ -153,6 +155,7 @@ class StockType extends TranslatorAwareType
                     ],
                 ],
                 'required' => false,
+                'help' => $this->trans('This will be the default displayed availability of a product, if it\'s not in stock and backordering it is denied. If you don\'t enter anything, nothing will be displayed. Further customization is possible for each product.', 'Admin.Catalog.Help'),
             ])
             ->add('delivery_time', TranslatableType::class, [
                 'label' => $this->trans(

@@ -37,6 +37,7 @@ use PrestaShop\PrestaShop\Adapter\Module\Module;
 use PrestaShop\PrestaShop\Adapter\Module\ModuleDataProvider;
 use PrestaShop\PrestaShop\Core\Context\LanguageContext;
 use PrestaShop\PrestaShop\Core\Domain\Module\Exception\ModuleNotFoundException;
+use PrestaShop\PrestaShop\Core\Domain\Profile\Permission\ValueObject\ModulePermission;
 use Symfony\Component\Finder\Finder;
 use Throwable;
 
@@ -109,7 +110,9 @@ class ModuleRepository implements ModuleRepositoryInterface
             $modules->add($this->getModule($moduleName));
         }
 
-        return $this->addModulesFromHook($modules);
+        $modules = $this->addModulesFromHook($modules);
+
+        return $this->filterModulesByPermissions($modules);
     }
 
     public function getInstalledModules(): ModuleCollection
@@ -250,7 +253,7 @@ class ModuleRepository implements ModuleRepositoryInterface
         if ($isValid) {
             try {
                 $tmpModule = ModuleLegacy::getInstanceByName($moduleName);
-            } catch (Throwable $e) {
+            } catch (Throwable) {
                 return $attributes;
             }
             foreach (self::MODULE_ATTRIBUTES as $attribute) {
@@ -270,8 +273,7 @@ class ModuleRepository implements ModuleRepositoryInterface
     {
         $path = $this->modulePath . $moduleName;
         if ($isValid) {
-            $moduleConfig = ModuleLegacy::loadModuleXMLConfig($moduleName);
-            $version = $moduleConfig['version'] ?? null;
+            $version = ModuleLegacy::getModuleVersion($moduleName) ?: null;
         } else {
             $version = null;
         }
@@ -352,16 +354,50 @@ class ModuleRepository implements ModuleRepositoryInterface
     {
         try {
             $modulesFromHook = $this->getModulesFromHook();
-        } catch (Throwable $e) {
+        } catch (Throwable) {
             return $module;
         }
 
         foreach ($modulesFromHook as $moduleFromHook) {
             if ($module->get('name') === $moduleFromHook['name']) {
+                $moduleVersionAvailable = $module->getAttributes()->get('version_available');
+                $moduleHookVersionAvailable = $moduleFromHook['version_available'];
+                // We keep the more up-to-date information (in case multiple sources provide the same module)
+                if (!empty($moduleVersionAvailable) && !empty($moduleHookVersionAvailable) && version_compare($moduleVersionAvailable, $moduleHookVersionAvailable, '>')) {
+                    continue;
+                }
+
+                // Prevent data from hooks from overriding local translations on displayName and description
+                if ($module->attributes->has('displayName') && !empty($module->attributes->get('displayName'))) {
+                    unset($moduleFromHook['displayName']);
+                }
+                if ($module->attributes->has('description') && !empty($module->attributes->get('description'))) {
+                    unset($moduleFromHook['description']);
+                }
+
                 $module->getAttributes()->add($moduleFromHook);
             }
         }
 
         return $module;
+    }
+
+    /**
+     * Filter modules if the current employee has the right to see it
+     */
+    protected function filterModulesByPermissions(ModuleCollection $modules): ModuleCollection
+    {
+        foreach ($modules as $key => $module) {
+            $moduleName = $module->getAttributes()->get('name');
+            if ($this->moduleDataProvider->isInstalled($moduleName)
+                && !$this->moduleDataProvider->can(
+                    ModulePermission::VIEW,
+                    $moduleName
+                )) {
+                unset($modules[$key]);
+            }
+        }
+
+        return $modules;
     }
 }

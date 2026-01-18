@@ -1,21 +1,15 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
-
-// Import FO pages
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
-// Import commonTests
 import {createCartRuleTest, deleteCartRuleTest} from '@commonTests/BO/catalog/cartRule';
 
-import {expect} from 'chai';
 import {
   type BrowserContext,
   FakerCartRule,
   foHummingbirdCartPage,
   foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
   foHummingbirdModalQuickViewPage,
   type Page,
   utilsPlaywright,
@@ -23,7 +17,7 @@ import {
 
 const baseContext: string = 'functional_FO_hummingbird_cart_cart_addPromoCode';
 
-describe('FO - cart : Add promo code', async () => {
+describe('FO - Cart : Add promo code', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -70,7 +64,7 @@ describe('FO - cart : Add promo code', async () => {
 
       await foHummingbirdHomePage.quickViewProduct(page, 1);
       await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
       const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
       expect(pageTitle).to.eq(foHummingbirdCartPage.pageTitle);
@@ -95,8 +89,8 @@ describe('FO - cart : Add promo code', async () => {
     it('should check the discount value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDiscountValue', baseContext);
 
-      const totalBeforeDiscount = await foHummingbirdCartPage.getDiscountValue(page);
-      expect(totalBeforeDiscount).to.eq(-newCartRuleData.discountAmount!.value);
+      const totalBeforeDiscount = await foHummingbirdCartPage.getCartRuleValue(page);
+      expect(totalBeforeDiscount).to.equal(`-€${parseFloat(newCartRuleData.discountAmount!.value.toString()).toFixed(2)}`);
     });
 
     it('should set the same promo code and check the error message', async function () {

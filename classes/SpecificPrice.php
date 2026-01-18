@@ -159,13 +159,23 @@ class SpecificPriceCore extends ObjectModel
 
     public function add($autodate = true, $nullValues = false)
     {
+        $specificPriceUsed = (bool) Configuration::getGlobalValue('PS_SPECIFIC_PRICE_FEATURE_ACTIVE');
+
+        if (!$specificPriceUsed) {
+            // Set cache of feature detachable to true
+            Configuration::updateGlobalValue('PS_SPECIFIC_PRICE_FEATURE_ACTIVE', '1');
+        }
+
         if (parent::add($autodate, $nullValues)) {
             // Flush cache when we adding a new specific price
             $this->flushCache();
-            // Set cache of feature detachable to true
-            Configuration::updateGlobalValue('PS_SPECIFIC_PRICE_FEATURE_ACTIVE', '1');
 
             return true;
+        }
+
+        if (!$specificPriceUsed) {
+            // Restore previous PS_SPECIFIC_PRICE_FEATURE_ACTIVE state because the add operation failed
+            Configuration::updateGlobalValue('PS_SPECIFIC_PRICE_FEATURE_ACTIVE', false);
         }
 
         return false;
@@ -749,8 +759,6 @@ class SpecificPriceCore extends ObjectModel
 
     /**
      * This method is allow to know if a feature is used or active.
-     *
-     * @since 1.5.0.1
      *
      * @return bool
      */

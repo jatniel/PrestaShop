@@ -212,7 +212,7 @@ class CustomerController extends PrestaShopAdminController
      *
      * @return Response
      */
-    #[AdminSecurity("is_granted('update', request.get('_legacy_controller'))")]
+    #[AdminSecurity("is_granted('update', request.get('_legacy_controller'))", redirectRoute: 'admin_customers_index')]
     public function editAction(
         int $customerId,
         Request $request,
@@ -314,7 +314,7 @@ class CustomerController extends PrestaShopAdminController
         try {
             /** @var ViewableCustomer $customerInformation */
             $customerInformation = $this->dispatchQuery(new GetCustomerForViewing($customerId));
-        } catch (CustomerNotFoundException $e) {
+        } catch (CustomerNotFoundException) {
             $this->addFlash(
                 'error',
                 $this->trans('This customer does not exist.', [], 'Admin.Orderscustomers.Notification')

@@ -37,6 +37,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Tools;
+use Twig\Environment;
 
 class LegacyControllerContextBuilder
 {
@@ -54,6 +55,7 @@ class LegacyControllerContextBuilder
         protected readonly LanguageContext $languageContext,
         protected readonly string $adminFolderName,
         protected string $psVersion,
+        protected readonly Environment $twig,
     ) {
     }
 
@@ -88,10 +90,11 @@ class LegacyControllerContextBuilder
             $table,
             $this->requestStack->getCurrentRequest() ?: Request::createFromGlobals(),
             $employeeLanguageId,
-            $this->shopContext->getBaseURI(),
+            $this->shopContext->getPhysicalUri(),
             $this->adminFolderName,
             $this->languageContext->isRTL(),
             $this->psVersion,
+            $this->twig,
         );
     }
 

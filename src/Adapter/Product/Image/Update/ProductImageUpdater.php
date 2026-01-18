@@ -36,6 +36,7 @@ use PrestaShop\PrestaShop\Core\Domain\Product\Image\Exception\CannotUpdateProduc
 use PrestaShop\PrestaShop\Core\Domain\Product\Image\ValueObject\ImageId;
 use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\ProductId;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\InvalidShopConstraintException;
+use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopCollection;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopId;
 use PrestaShop\PrestaShop\Core\Grid\Position\Exception\PositionDataException;
@@ -119,6 +120,8 @@ class ProductImageUpdater
             throw new InvalidShopConstraintException('Image has no features related with shop group use single shop and all shops constraints');
         } elseif ($shopConstraint->forAllShops()) {
             $shopIds = $this->productImageRepository->getAssociatedShopIds(new ImageId((int) $newCover->id));
+        } elseif ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds()) {
+            $shopIds = $shopConstraint->getShopIds();
         } else {
             $shopIds = [$shopConstraint->getShopId()];
         }
@@ -149,15 +152,6 @@ class ProductImageUpdater
     public function updatePosition(Image $image, int $newPosition): void
     {
         $oldPosition = (int) $image->position;
-        // The images are sorted by their position values, but since only one of them as un updated value there will be
-        // two images with the same position, so we need to add an offset to the new position depending on the way it
-        // is being modified
-        if ($oldPosition < $newPosition) {
-            ++$newPosition;
-        } elseif ($oldPosition > $newPosition) {
-            --$newPosition;
-        }
-
         $positionsData = [
             'positions' => [
                 [

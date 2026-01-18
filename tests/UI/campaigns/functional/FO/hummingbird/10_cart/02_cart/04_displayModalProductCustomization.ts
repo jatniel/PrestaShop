@@ -1,18 +1,14 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 
-// Import FO pages
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
-import {expect} from 'chai';
 import {
   type BrowserContext,
   dataProducts,
   foHummingbirdCartPage,
   foHummingbirdHomePage,
+  foHummingbirdModalBlockCartPage,
   foHummingbirdProductPage,
   foHummingbirdSearchResultsPage,
   type Page,
@@ -21,7 +17,7 @@ import {
 
 const baseContext: string = 'functional_FO_hummingbird_cart_cart_displayModalProductCustomization';
 
-describe('FO - cart : Display modal of product customization', async () => {
+describe('FO - Cart : Display modal of product customization', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   const customText: string = 'Hello world!';
@@ -74,17 +70,17 @@ describe('FO - cart : Display modal of product customization', async () => {
 
       await foHummingbirdProductPage.clickOnAddToCartButton(page);
 
-      const isBlockCartModal = await blockCartModal.isBlockCartModalVisible(page);
+      const isBlockCartModal = await foHummingbirdModalBlockCartPage.isBlockCartModalVisible(page);
       expect(isBlockCartModal).to.equal(true);
 
-      const successMessage = await blockCartModal.getBlockCartModalTitle(page);
+      const successMessage = await foHummingbirdModalBlockCartPage.getBlockCartModalTitle(page);
       expect(successMessage).to.contains(foHummingbirdHomePage.successAddToCartMessage);
     });
 
     it('should click on continue shopping button', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'continueShopping', baseContext);
 
-      const isModalNotVisible = await blockCartModal.continueShopping(page);
+      const isModalNotVisible = await foHummingbirdModalBlockCartPage.continueShopping(page);
       expect(isModalNotVisible).to.equal(true);
     });
 

@@ -1,13 +1,10 @@
-// Import utils
 import testContext from '@utils/testContext';
-
-// Import pages
-import addProductPage from '@pages/BO/catalog/products/add';
-
 import {expect} from 'chai';
+
 import {
   boDashboardPage,
   boLoginPage,
+  boProductsCreatePage,
   boStockPage,
   type BrowserContext,
   dataCategories,
@@ -18,14 +15,13 @@ import {
 const baseContext: string = 'functional_BO_catalog_stocks_filterStocksByCategories';
 
 /*
-Filter stocks page by categories and check products list
+ * Filter stocks page by categories and check products list
  */
 describe('BO - Catalog - Stocks : Filter stocks by categories', async () => {
   let browserContext: BrowserContext;
   let page: Page;
   let numberOfProducts: number = 0;
 
-  // before and after functions
   before(async function () {
     browserContext = await utilsPlaywright.createBrowserContext(this.browser);
     page = await utilsPlaywright.newTab(browserContext);
@@ -48,10 +44,10 @@ describe('BO - Catalog - Stocks : Filter stocks by categories', async () => {
   it('should go to \'Catalog > Stocks\' page', async function () {
     await testContext.addContextItem(this, 'testIdentifier', 'goToStocksPage', baseContext);
 
-    await addProductPage.goToSubMenu(
+    await boProductsCreatePage.goToSubMenu(
       page,
-      addProductPage.catalogParentLink,
-      addProductPage.stocksLink,
+      boProductsCreatePage.catalogParentLink,
+      boProductsCreatePage.stocksLink,
     );
 
     const pageTitle = await boStockPage.getPageTitle(page);

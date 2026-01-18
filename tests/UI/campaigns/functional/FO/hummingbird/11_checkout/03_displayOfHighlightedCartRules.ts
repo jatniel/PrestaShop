@@ -1,14 +1,9 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import common tests
 import {enableHummingbird, disableHummingbird} from '@commonTests/BO/design/hummingbird';
 import {createCartRuleTest, deleteCartRuleTest} from '@commonTests/BO/catalog/cartRule';
 
-// Import FO pages
-import blockCartModal from '@pages/FO/hummingbird/modal/blockCart';
-
-import {expect} from 'chai';
 import {
   type BrowserContext,
   dataProducts,
@@ -16,6 +11,7 @@ import {
   foHummingbirdCartPage,
   foHummingbirdHomePage,
   foHummingbirdLoginPage,
+  foHummingbirdModalBlockCartPage,
   foHummingbirdModalQuickViewPage,
   foHummingbirdSearchResultsPage,
   type Page,
@@ -109,7 +105,7 @@ describe('FO - Checkout : Display of highlighted cart rule', async () => {
       await foHummingbirdSearchResultsPage.quickViewProduct(page, 1);
 
       await foHummingbirdModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foHummingbirdModalBlockCartPage.proceedToCheckout(page);
 
       const pageTitle = await foHummingbirdCartPage.getPageTitle(page);
       expect(pageTitle).to.equal(foHummingbirdCartPage.pageTitle);
@@ -134,13 +130,14 @@ describe('FO - Checkout : Display of highlighted cart rule', async () => {
     it('should verify the total after the discount', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkTotalAfterDiscount3', baseContext);
 
-      const totalAfterPromoCode: number = dataProducts.demo_6.combinations[0].price - cartRuleWithCodeData.discountAmount!.value;
+      const totalAfterPromoCode: number = dataProducts.demo_6.combinations[0].price
+        - parseFloat(cartRuleWithCodeData.discountAmount!.value.toString());
 
       const priceATI = await foHummingbirdCartPage.getATIPrice(page);
       expect(priceATI).to.equal(parseFloat(totalAfterPromoCode.toFixed(2)));
 
-      const discountValue = await foHummingbirdCartPage.getDiscountValue(page, 1);
-      expect(discountValue).to.equal(-cartRuleWithCodeData.discountAmount!.value);
+      const discountValue = await foHummingbirdCartPage.getCartRuleValue(page, 1);
+      expect(discountValue).to.equal(`-€${parseFloat(cartRuleWithCodeData.discountAmount!.value.toString()).toFixed(2)}`);
     });
 
     it('should remove the discount', async function () {

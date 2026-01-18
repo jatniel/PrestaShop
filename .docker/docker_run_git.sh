@@ -41,7 +41,7 @@ if [ "${DISABLE_MAKE}" != "1" ]; then
   echo "\n* Install node $NODE_VERSION...";
   export NVM_DIR=/usr/local/nvm
   mkdir -p $NVM_DIR \
-      && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash \
+      && curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.3/install.sh | bash \
       && . $NVM_DIR/nvm.sh \
       && nvm install $NODE_VERSION \
       && nvm alias default $NODE_VERSION \
@@ -49,6 +49,15 @@ if [ "${DISABLE_MAKE}" != "1" ]; then
 
   export NODE_PATH=$NVM_DIR/versions/node/v$NODE_VERSION/bin
   export PATH=$PATH:$NODE_PATH
+
+  # Make nvm available by default for all users
+  echo 'export NVM_DIR="/usr/local/nvm"' >> /etc/bash.bashrc
+  echo '[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"' >> /etc/bash.bashrc
+  echo '[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"' >> /etc/bash.bashrc
+
+  # Also add Node.js binaries to system PATH for all users
+  echo "export PATH=\$PATH:$NODE_PATH" >> /etc/bash.bashrc
+  echo "export PATH=\$PATH:$NODE_PATH" >> /etc/profile
 
   echo "\n* Install composer ...";
   mkdir -p /var/www/.composer
@@ -66,10 +75,10 @@ if [ "${DISABLE_MAKE}" != "1" ]; then
   chown -R www-data:www-data vendor modules themes
 
   echo "\n* Build assets ...";
-  runuser -g www-data -u www-data -- /usr/bin/make assets
+  runuser -g www-data -u www-data -- /var/www/html/tools/assets/build.sh
 
   echo "\n* Wait for assets built...";
-  /usr/bin/make wait-assets
+  runuser -g www-data -u www-data -- /var/www/html/tools/assets/wait-build.sh
 else
   echo "\n* Build of assets was disabled...";
 fi
@@ -135,7 +144,7 @@ if [ ! -f ./app/config/parameters.php ]; then
         --domain="$PS_DOMAIN" --db_server=$DB_SERVER:$DB_PORT --db_name="$DB_NAME" --db_user=$DB_USER \
         --db_password=$DB_PASSWD --prefix="$DB_PREFIX" --firstname="Marc" --lastname="Beier" \
         --password="$ADMIN_PASSWD" --email="$ADMIN_MAIL" --language=$PS_LANGUAGE --country=$PS_COUNTRY \
-        --all_languages=$PS_ALL_LANGUAGES --newsletter=0 --send_email=0 --ssl=$PS_ENABLE_SSL
+        --all_languages=$PS_ALL_LANGUAGES --newsletter=0 --send_email=0 --ssl=$PS_ENABLE_SSL --fixtures=$PS_INSTALL_DEMO_PRODUCTS
 
         if [ $? -ne 0 ]; then
             echo 'warning: PrestaShop installation failed.'

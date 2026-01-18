@@ -763,15 +763,13 @@
 
       {# If there is only one error then display it without popover #}
     {%- else -%}
-      <div class="d-inline-block text-danger align-top">
+      <div class="d-inline-block align-baseline text-danger mt-1" role="alert">
         <i class="material-icons form-error-icon">error_outline</i>
-      </div>
-      <div class="d-inline-block">
+
         {% for error in errors %}
-          <div class="text-danger">
-            <p> {{ error.messageTemplate|trans(error.messageParameters, 'form_error') }}
-            </p>
-          </div>
+          <span>
+            {{ error.messageTemplate|trans(error.messageParameters, 'form_error') }}
+          </span>
         {%- endfor -%}
       </div>
     {%- endif -%}
@@ -831,6 +829,7 @@
       </table>
     </div>
   {% endapply %}
+  {{ block('form_help') }}
 {% endblock material_choice_table_widget %}
 
 {% block material_multiple_choice_table_widget %}
@@ -1088,8 +1087,8 @@
       </div>
     {% endif %}
 
-    {% set attr = attr|merge({'data-max-length': form.vars.max_length, maxlength: form.vars.max_length, class: 'js-countable-input'}) -%}
     {% set attr = attr|merge(input_attr) -%}
+    {% set attr = attr|merge({'data-max-length': form.vars.max_length, maxlength: form.vars.max_length, class: (attr.class|default('') ~ ' js-countable-input')|trim}) -%}
 
     {% if form.vars.input == 'input' %}
       {{- block('form_widget_simple') -}}
@@ -1317,6 +1316,7 @@
     </span>
     {% endif %}
   </span>
+  {{- block('form_help') -}}
 {% endblock %}
 
 {% block link_preview_widget %}

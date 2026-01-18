@@ -16,7 +16,7 @@ import {
 
 const baseContext: string = 'functional_FO_hummingbird_menuAndNavigation_navigateInCategories_breadcrumb';
 
-describe('FO - Menu and Navigation : Breadcrumb', async () => {
+describe('FO - Menu and Navigation - Navigate in Categories : Breadcrumb', async () => {
   let browserContext: BrowserContext;
   let page: Page;
 
@@ -94,7 +94,7 @@ describe('FO - Menu and Navigation : Breadcrumb', async () => {
     it('should click on Home link from the breadcrumb', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnHomeLink', baseContext);
 
-      await foHummingbirdCategoryPage.clickOnBreadCrumbLink(page, 'en');
+      await foHummingbirdCategoryPage.clickOnBreadCrumbLink(page, '/');
 
       const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.equal(true);
@@ -135,7 +135,7 @@ describe('FO - Menu and Navigation : Breadcrumb', async () => {
     it('should click on Home link from the breadcrumb', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'clickOnHomeLink2', baseContext);
 
-      await foHummingbirdCategoryPage.clickOnBreadCrumbLink(page, 'en');
+      await foHummingbirdCategoryPage.clickOnBreadCrumbLink(page, '/');
 
       const isHomePage = await foHummingbirdHomePage.isHomePage(page);
       expect(isHomePage).to.equal(true);

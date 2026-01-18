@@ -127,6 +127,7 @@ class UpdateLicensesCommand extends Command
                 // admin folders
                 'admin-dev/filemanager',
                 'admin-dev/themes/default/public/',
+                'admin-dev/themes/default/example',
                 'admin-dev/themes/new-theme/public/',
                 // js dependencies
                 'js/tiny_mce',
@@ -159,7 +160,9 @@ class UpdateLicensesCommand extends Command
             ->notPath([
                 // install
                 'install-dev/theme/js/sprintf.min.js',
-                'install-dev/theme/js/zxcvbn.js',
+                'install-dev/theme/js/zxcvbn-core.js',
+                'install-dev/theme/js/zxcvbn-language-common.js',
+                'install-dev/theme/js/zxcvbn-language-en.js',
             ])
             ->ignoreDotFiles(false);
         $parser = (new ParserFactory())->create(ParserFactory::ONLY_PHP7);
@@ -194,7 +197,7 @@ class UpdateLicensesCommand extends Command
                         if (count($nodes)) {
                             $this->addLicenseToNode($nodes[0], $file);
                         }
-                    } catch (\PhpParser\Error $exception) {
+                    } catch (\PhpParser\Error) {
                         $output->writeln('Syntax error on file ' . $file->getRelativePathname() . '. Continue ...');
                     }
 

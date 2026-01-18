@@ -1,17 +1,11 @@
-// Import utils
 import testContext from '@utils/testContext';
+import {expect} from 'chai';
 
-// Import commonTests
 import {deleteCartRuleTest} from '@commonTests/BO/catalog/cartRule';
 
-// Import pages
-// Import BO pages
-import cartRulesPage from '@pages/BO/catalog/discounts';
-import addCartRulePage from '@pages/BO/catalog/discounts/add';
-// Import FO pages
-import {blockCartModal} from '@pages/FO/classic/modal/blockCart';
-
 import {
+  boCartRulesPage,
+  boCartRulesCreatePage,
   boDashboardPage,
   boLoginPage,
   type BrowserContext,
@@ -21,6 +15,7 @@ import {
   foClassicCartPage,
   foClassicHomePage,
   foClassicLoginPage,
+  foClassicModalBlockCartPage,
   foClassicModalQuickViewPage,
   foClassicProductPage,
   foClassicSearchResultsPage,
@@ -28,8 +23,6 @@ import {
   utilsCore,
   utilsPlaywright,
 } from '@prestashop-core/ui-testing';
-
-import {expect} from 'chai';
 
 const baseContext: string = 'functional_BO_catalog_discounts_cartRules_CRUDCartRule_actions_applyToSpecificProduct';
 
@@ -87,30 +80,30 @@ describe('BO - Catalog - Cart rules : Apply discount to specific product', async
         boDashboardPage.discountsLink,
       );
 
-      const pageTitle = await cartRulesPage.getPageTitle(page);
-      expect(pageTitle).to.contains(cartRulesPage.pageTitle);
+      const pageTitle = await boCartRulesPage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCartRulesPage.pageTitle);
     });
 
     it('should go to new cart rule page', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'goToNewCartRulePage', baseContext);
 
-      await cartRulesPage.goToAddNewCartRulesPage(page);
+      await boCartRulesPage.goToAddNewCartRulesPage(page);
 
-      const pageTitle = await addCartRulePage.getPageTitle(page);
-      expect(pageTitle).to.contains(addCartRulePage.pageTitle);
+      const pageTitle = await boCartRulesCreatePage.getPageTitle(page);
+      expect(pageTitle).to.contains(boCartRulesCreatePage.pageTitle);
     });
 
     it('should create cart rule', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'createCartRule', baseContext);
 
-      const validationMessage = await addCartRulePage.createEditCartRules(page, newCartRuleData);
-      expect(validationMessage).to.contains(addCartRulePage.successfulCreationMessage);
+      const validationMessage = await boCartRulesCreatePage.createEditCartRules(page, newCartRuleData);
+      expect(validationMessage).to.contains(boCartRulesCreatePage.successfulCreationMessage);
     });
 
     it('should view my shop', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'viewMyShop1', baseContext);
 
-      page = await addCartRulePage.viewMyShop(page);
+      page = await boCartRulesCreatePage.viewMyShop(page);
       await foClassicHomePage.changeLanguage(page, 'en');
 
       const isHomePage = await foClassicHomePage.isHomePage(page);
@@ -171,7 +164,7 @@ describe('BO - Catalog - Cart rules : Apply discount to specific product', async
 
       await foClassicModalQuickViewPage.addToCartByQuickView(page);
 
-      const isNotVisible = await blockCartModal.continueShopping(page);
+      const isNotVisible = await foClassicModalBlockCartPage.continueShopping(page);
       expect(isNotVisible).to.equal(true);
     });
 
@@ -188,7 +181,7 @@ describe('BO - Catalog - Cart rules : Apply discount to specific product', async
       await testContext.addContextItem(this, 'testIdentifier', 'addSecondProductToCart', baseContext);
 
       await foClassicModalQuickViewPage.addToCartByQuickView(page);
-      await blockCartModal.proceedToCheckout(page);
+      await foClassicModalBlockCartPage.proceedToCheckout(page);
 
       // Check number of products in cart
       const notificationsNumber = await foClassicHomePage.getCartNotificationsNumber(page);
@@ -207,10 +200,10 @@ describe('BO - Catalog - Cart rules : Apply discount to specific product', async
     it('should check the discount value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDiscountValue1', baseContext);
 
-      const discount = await utilsCore.percentage(dataProducts.demo_8.finalPrice, newCartRuleData.discountPercent!);
+      const discount = await utilsCore.percentage(dataProducts.demo_8.finalPrice, newCartRuleData.getDiscountPercent());
 
-      const discountValue = await foClassicCartPage.getDiscountValue(page);
-      expect(discountValue).to.eq(-discount.toFixed(2));
+      const totalBeforeDiscount = await foClassicCartPage.getCartRuleValue(page, 1);
+      expect(totalBeforeDiscount).to.equal(`-€${discount.toFixed(2)}`);
     });
 
     it('should delete the second product from the cart', async function () {
@@ -225,10 +218,10 @@ describe('BO - Catalog - Cart rules : Apply discount to specific product', async
     it('should check the discount value', async function () {
       await testContext.addContextItem(this, 'testIdentifier', 'checkDiscountValue2', baseContext);
 
-      const discount = await utilsCore.percentage(dataProducts.demo_8.finalPrice, newCartRuleData.discountPercent!);
+      const discount = await utilsCore.percentage(dataProducts.demo_8.finalPrice, newCartRuleData.getDiscountPercent());
 
-      const discountValue = await foClassicCartPage.getDiscountValue(page);
-      expect(discountValue).to.eq(-discount.toFixed(2));
+      const totalBeforeDiscount = await foClassicCartPage.getCartRuleValue(page, 1);
+      expect(totalBeforeDiscount).to.equal(`-€${discount.toFixed(2)}`);
     });
 
     it(`should delete the product '${dataProducts.demo_8.name}' from the cart`, async function () {

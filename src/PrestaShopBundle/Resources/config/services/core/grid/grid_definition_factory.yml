@@ -56,6 +56,7 @@ services:
     arguments:
       - '@prestashop.adapter.shop.context'
       - '@prestashop.adapter.grid.action.row.accessibility_checker.category_for_view'
+      - '@request_stack'
     public: true
 
   prestashop.core.grid.definition.factory.employee:
@@ -355,6 +356,9 @@ services:
     class: 'PrestaShop\PrestaShop\Core\Grid\Definition\Factory\CarrierGridDefinitionFactory'
     parent: PrestaShop\PrestaShop\Core\Grid\Definition\Factory\AbstractGridDefinitionFactory
     public: true
+    arguments:
+      - '%database_prefix%'
+      - '@doctrine.dbal.default_connection'
 
   prestashop.core.grid.definition.factory.zone:
     class: 'PrestaShop\PrestaShop\Core\Grid\Definition\Factory\ZoneGridDefinitionFactory'
@@ -381,6 +385,8 @@ services:
       - '@form.factory'
       - '@PrestaShop\PrestaShop\Core\Grid\Action\Row\AccessibilityChecker\ProductSingleShopAssociatedAccessibilityChecker'
       - '@PrestaShop\PrestaShop\Core\Grid\Action\Row\AccessibilityChecker\ProductMultipleShopsAssociatedAccessibilityChecker'
+      - '@PrestaShop\PrestaShop\Adapter\Security\Access'
+      - '@prestashop.adapter.data_provider.employee'
     public: true
 
   prestashop.core.grid.definition.factory.product.shops:
@@ -412,9 +418,6 @@ services:
   prestashop.core.grid.definition.factory.state:
     class: 'PrestaShop\PrestaShop\Core\Grid\Definition\Factory\StateGridDefinitionFactory'
     parent: PrestaShop\PrestaShop\Core\Grid\Definition\Factory\AbstractGridDefinitionFactory
-    arguments:
-      - "@=service('router').generate('admin_common_reset_search', {'controller': 'state', 'action': 'index'})"
-      - "@=service('router').generate('admin_states_index')"
     public: true
 
   prestashop.core.grid.definition.factory.title:

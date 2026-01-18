@@ -42,9 +42,11 @@ use PrestaShop\PrestaShop\Core\Domain\Product\Stock\ValueObject\OutOfStockType;
 use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\ProductId;
 use PrestaShop\PrestaShop\Core\Domain\Product\ValueObject\ProductType;
 use PrestaShop\PrestaShop\Core\Domain\Shop\Exception\ShopAssociationNotFound;
+use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopCollection;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopConstraint;
 use PrestaShop\PrestaShop\Core\Domain\Shop\ValueObject\ShopId;
 use PrestaShop\PrestaShop\Core\Exception\CoreException;
+use PrestaShop\PrestaShop\Core\Hook\HookDispatcherInterface;
 use PrestaShop\PrestaShop\Core\Product\Combination\Generator\CombinationGeneratorInterface;
 use PrestaShopException;
 use Product;
@@ -92,6 +94,11 @@ class CombinationCreator
     private $defaultCombinationUpdater;
 
     /**
+     * @var HookDispatcherInterface
+     */
+    private $hookDispatcher;
+
+    /**
      * @param CombinationGeneratorInterface $combinationGenerator
      * @param CombinationRepository $combinationRepository
      * @param ProductRepository $productRepository
@@ -105,7 +112,8 @@ class CombinationCreator
         StockAvailableRepository $stockAvailableRepository,
         AttributeGroupRepository $attributeGroupRepository,
         AttributeRepository $attributeRepository,
-        DefaultCombinationUpdater $defaultCombinationUpdater
+        DefaultCombinationUpdater $defaultCombinationUpdater,
+        HookDispatcherInterface $hookDispatcher
     ) {
         $this->combinationGenerator = $combinationGenerator;
         $this->combinationRepository = $combinationRepository;
@@ -114,6 +122,7 @@ class CombinationCreator
         $this->defaultCombinationUpdater = $defaultCombinationUpdater;
         $this->attributeGroupRepository = $attributeGroupRepository;
         $this->attributeRepository = $attributeRepository;
+        $this->hookDispatcher = $hookDispatcher;
     }
 
     /**
@@ -166,7 +175,7 @@ class CombinationCreator
         $productStockAvailable = $this->stockAvailableRepository->getForProduct($productId, new ShopId($product->getShopId()));
         $outOfStockType = new OutOfStockType((int) $productStockAvailable->out_of_stock);
 
-        if ($shopConstraint->forAllShops()) {
+        if ($shopConstraint->forAllShops() || ($shopConstraint instanceof ShopCollection && $shopConstraint->hasShopIds())) {
             foreach ($shopIdsByConstraint as $shopId) {
                 $this->combinationRepository->updateCombinationOutOfStockType($productId, $outOfStockType, ShopConstraint::shop($shopId->getValue()));
             }
@@ -277,6 +286,11 @@ class CombinationCreator
 
         try {
             $this->combinationRepository->saveProductAttributeAssociation($combinationId, $generatedCombination);
+
+            $this->hookDispatcher->dispatchWithParameters(
+                'actionAttributeCombinationSave',
+                ['id_product_attribute' => (int) $combination->id, 'id_attributes' => $generatedCombination]
+            );
         } catch (CoreException $e) {
             foreach ($shopIds as $shopId) {
                 $this->combinationRepository->delete($combinationId, ShopConstraint::shop($shopId->getValue()));
